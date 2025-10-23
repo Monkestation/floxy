@@ -1,17 +1,31 @@
+import path from "node:path";
 import dotenv from "dotenv";
-import { notEmpty } from "./utils/other.js";
+import { BooleanLike, notEmpty } from "./utils/other.js";
 
-dotenv.config()
+dotenv.config({ quiet: true });
 
-export default {
-  PORT: Number(process.env.PORT) ?? 3050,
+const config = {
+  PORT: Number(process.env.PORT) || 3050,
   JWT_SECRET: process.env.JWT_SECRET ?? "supersecretkey",
+  ADMIN_PASSWORD: process.env.ADMIN_PASSWORD ?? "changeme123!",
   SENTRY_DSN: process.env.SENTRY_DSN,
-  CACHE_FOLDER: process.env.CACHE_FOLDER,
+  CACHE_FOLDER: path.resolve(process.env.CACHE_FOLDER || path.join(process.cwd(), "cache")),
   /// Separated by commas
-  EXTERNAL_CACHE_ENDPOINTS: process.env.EXTERNAL_CACHE_ENDPOINT?.split(",").filter(notEmpty) ?? [],
-  LOGGER_PRETTY: process.env.LOGGER_PRETTY === "true",
-  DEBUG: process.env.DEBUG === "true",
-  DATABASE_CLIENT: process.env.DATABASE_CLIENT ?? "sqlite3",
-  DATABASE_CONNECTION: process.env.DATABASE_CONNECTION ?? "./data/database.sqlite",
+  EXTERNAL_CACHE_ENDPOINTS: process.env.EXTERNAL_CACHE_ENDPOINTS?.split(",").filter(notEmpty) ?? [],
+  LOGGER_PRETTY: BooleanLike(process.env.LOGGER_PRETTY),
+  DEBUG: BooleanLike(process.env.DEBUG),
+  /// paths
+  FFMPEG_PATH: process.env.FFMPEG_PATH,
+  YTDLP_PATH: process.env.YTDLP_PATH,
+  DATABASE_FILE: path.resolve(process.env.DATABASE_FILE || path.join(process.cwd(), "floxy.sqlite")),
+};
+
+export class ConfigurationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "ConfigurationError";
+  }
 }
+
+
+export default config;

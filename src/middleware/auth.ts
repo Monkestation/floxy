@@ -1,18 +1,49 @@
-import jwt from "jsonwebtoken";
-import config from "../config.js";
 import type { FastifyReply, FastifyRequest } from "fastify";
+import { jwtVerify } from "jose";
+import config from "../config.js";
+import type { FloxyJWTPayload, FloxyUserRole } from "../typings/users.js";
 
-export const authMiddleware = async (req: FastifyRequest, res: FastifyReply, next: () => void) => {
-  const token = req.headers.authorization?.split(" ")[1];
-  if (!token) {
+const secretKey = new TextEncoder().encode(config.JWT_SECRET);
+
+export const authMiddleware = async (
+  req: FastifyRequest,
+  res: FastifyReply,
+  next: () => void
+) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith("Bearer ")) {
     return res.status(401).send({ error: "Unauthorized" });
   }
 
-  jwt.verify(token, config.JWT_SECRET, (err, user) => {
-    if (err) {
-      return res.status(403).send({ error: 'Invalid token' });
+  const token = authHeader.slice(7).trim();
+
+  try {
+    const { payload } = await jwtVerify(token, secretKey);
+    const jwtPayload = payload as FloxyJWTPayload;
+
+    const dbUser = await req.server.floxy.database.getUserById(jwtPayload.id);
+    if (!dbUser) {
+      return res.status(403).send({ error: "User not found" });
     }
-    req.user = user;
+
+    req.user = dbUser;
     next();
-  });
+  } catch {
+    return res.status(403).send({ error: "Invalid token" });
+  }
 };
+
+export const authNeedsRoleMiddleware =
+  (requiredRole: FloxyUserRole) =>
+    async (req: FastifyRequest, res: FastifyReply, next: () => void) => {
+      const user = req.user;
+      if (!user) {
+        return res.status(401).send({ error: "Unauthorized" });
+      }
+
+      if (user.role !== requiredRole) {
+        return res.status(403).send({ error: "Forbidden" });
+      }
+
+      next();
+    };

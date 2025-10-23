@@ -1,3 +1,7 @@
+ignoredBuiltDependencies:
+  - esbuild
+
 onlyBuiltDependencies:
+  - bcrypt
   - better-sqlite3
   - ytdlp-nodejs

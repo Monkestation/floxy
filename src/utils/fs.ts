@@ -1,0 +1,75 @@
+import fss from "node:fs";
+import fs from "node:fs/promises";
+
+// because ugh.
+export async function createDir(dir: string) {
+  try {
+    await fs.stat(dir);
+  } catch (error: unknown) {
+    if ((error as { code: string }).code === "ENOENT") {
+      await fs.mkdir(dir, { recursive: true });
+    } else {
+      throw error;
+    }
+  }
+}
+
+export function createDirSync(dir: string) {
+  try {
+    fss.statSync(dir);
+  } catch (error: unknown) {
+    if ((error as { code: string }).code === "ENOENT") {
+      fss.mkdirSync(dir, { recursive: true });
+    } else {
+      throw error;
+    }
+  }
+}
+
+export async function statExists(file: string): Promise<boolean> {
+  try {
+    await fs.stat(file);
+    return true;
+  } catch (error: unknown) {
+    if ((error as { code: string }).code === "ENOENT") {
+      return false;
+    }
+    throw error;
+  }
+}
+
+export function statExistsSync(file: string): boolean {
+  try {
+    fss.statSync(file);
+    return true;
+  } catch (error: unknown) {
+    if ((error as { code: string }).code === "ENOENT") {
+      return false;
+    }
+    throw error;
+  }
+}
+
+export async function dirExists(dir: string): Promise<boolean> {
+  try {
+    const stats = await fs.stat(dir);
+    return stats.isDirectory();
+  } catch (error: unknown) {
+    if ((error as { code: string }).code === "ENOENT") {
+      return false;
+    }
+    throw error;
+  }
+}
+
+export function dirExistsSync(dir: string): boolean {
+  try {
+    const stats = fss.statSync(dir);
+    return stats.isDirectory();
+  } catch (error: unknown) {
+    if ((error as { code: string }).code === "ENOENT") {
+      return false;
+    }
+    throw error;
+  }
+}

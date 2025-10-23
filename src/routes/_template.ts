@@ -1,5 +1,5 @@
 import fastifyPlugin from "fastify-plugin";
 
-export default fastifyPlugin((fastify, opts) => {
+export default fastifyPlugin((fastify, _opts) => {
   
 });

@@ -1,14 +1,11 @@
 
 
-import winston from "winston";
-import { getFilenameFriendlyUTCDate, sleep } from "./other.js";
+import * as Sentry from '@sentry/node';
 import { join as pathJoin } from "node:path";
-import Sentry from '@sentry/node';
+import winston from "winston";
 import config from "../config.js";
+import { getFilenameFriendlyUTCDate } from "./other.js";
 import { SentryTransport } from './WinstonSentryTransport.js';
-import { fastify } from "fastify";
-
-const IS_PRODUCTION = process.env.NODE_ENV === "production";
 
 if (config.SENTRY_DSN) {
   Sentry.init({
@@ -28,18 +25,12 @@ if (config.DEBUG) {
 const logPath = pathJoin(
   process.cwd(),
   "logs",
-  `${IS_PRODUCTION ? "prod" : "dev"}_${getFilenameFriendlyUTCDate()}.json`
+  `${getFilenameFriendlyUTCDate()}${config.DEBUG ? ".debug" : ""}.json`
 );
 console.log(`"Logging (JSON Lines) to ${logPath}"`);
 const transports = [];
 
-// Determine log level based on environment and debug mode
-let transportLogLevel: string;
-if (IS_PRODUCTION) {
-  transportLogLevel = config.DEBUG ? "silly" : "info";
-} else {
-  transportLogLevel = "silly";
-}
+const transportLogLevel = config.DEBUG ? "debug" : "info";
 
 transports.push(
   new winston.transports.File({
@@ -65,7 +56,7 @@ if (config.SENTRY_DSN) {
   );
 }
 if (config.LOGGER_PRETTY) {
-  const { inspect } = require("node:util");
+  const { inspect } = await import("node:util");
 
   transports.push(
     new winston.transports.Console({
@@ -160,6 +151,7 @@ export class ContextError extends Error {
 }
 
 export const fastifyLogger = {
+  level: 'info',
   info: logger.info.bind(logger),
   error: logger.error.bind(logger),
   warn: logger.warn.bind(logger),

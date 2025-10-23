@@ -1,6 +1,6 @@
 import * as Sentry from "@sentry/node";
-import TransportStream from "winston-transport";
 import { LEVEL } from "triple-beam";
+import TransportStream from "winston-transport";
 
 enum SentrySeverity {
   Debug = "debug",
@@ -50,15 +50,15 @@ export class SentryTransport extends TransportStream {
   public constructor(opts?: SentryTransportOptions) {
     super(opts);
 
-    this.levelsMap = this.setLevelsMap(opts && opts.levelsMap);
-    this.silent = (opts && opts.silent) || false;
+    this.levelsMap = this.setLevelsMap(opts?.levelsMap);
+    this.silent = (opts?.silent) || false;
 
     if (!opts || !opts.skipSentryInit) {
-      Sentry.init(SentryTransport.withDefaults((opts && opts.sentry) || {}));
+      Sentry.init(SentryTransport.withDefaults((opts?.sentry) || {}));
     }
   }
 
-  public log(info: any, callback: () => void) {
+  public override log(info: any, callback: () => void) {
     setImmediate(() => {
       this.emit("logged", info);
     });

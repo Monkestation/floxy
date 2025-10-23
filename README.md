@@ -9,3 +9,87 @@ pushes it to the webserver
 then removes it once it's done playing on the game server.
 "
 
+note things
+- When files get "deleted" we append a random deleted string so its unknown when we serve it.
+
+# Buhbuh
+
+Floxy will not serve files for you, you must have a reverse proxy config setup to hit the API. You are responsible for the webserver that serves the cache
+
+## Caddy Example
+
+Single domain
+```nginx
+www.example.com {
+  handle /api/* {
+    reverse_proxy localhost:3050/api/{uri}
+  }
+
+  handle /cache/* {
+    root * /opt/floxy/cache
+    file_server
+  }
+}
+```
+
+Subdomain
+```nginx
+api.example.com {
+  reverse_proxy localhost:3050
+}
+
+cache.example.com {
+  root * /opt/floxy/cache
+  file_server
+}
+```
+
+
+## Nginx Example
+
+Multi domain
+```nginx
+server {
+  listen 80;
+  listen [::]:80;
+  server_name api.example.com;
+
+  location / {
+    proxy_pass http://localhost:3050;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+  }
+}
+
+server {
+  listen 80;
+  listen [::]:80;
+  server_name cache.example.com;
+  location / {
+    root /opt/floxy/cache;
+    autoindex off;
+  }
+}
+```
+
+Single domain
+```nginx
+server {
+  listen 80;
+  listen [::]:80;
+  server_name www.example.com;
+
+  location /api/ {
+    proxy_pass http://localhost:3050;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+  }
+
+  location /cache/ {
+    root /opt/floxy/cache;
+    autoindex on;
+  }
+}
+```

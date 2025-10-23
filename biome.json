@@ -6,7 +6,16 @@
 		"useIgnoreFile": false
 	},
 	"files": {
-		"ignoreUnknown": false
+		"ignoreUnknown": false,
+		"includes": [
+			"**",
+			"!dist",
+			"!**/dist",
+			"!logs",
+			"!src/utils/WinstonSentryTransport.ts",
+			"!src/routes/_template.ts",
+			"!cache"
+		]
 	},
 	"formatter": {
 		"enabled": true,
