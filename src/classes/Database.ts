@@ -94,9 +94,8 @@ export class DatabaseManager {
           });
         }
       }
-
-      logger.info("Finished initSchema on ByondDatabaseManager");
     }
+    logger.info("Finished initSchema on ByondDatabaseManager");
   }
 
   public async connect() {

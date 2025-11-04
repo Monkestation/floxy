@@ -23,9 +23,10 @@ interface _DBMediaEntry extends Table {
   _tableName: "media";
   id: string;
   url: string;
+  extension: string;
   status: MediaQueueStatus;
   metadata: string; // JSON stringified
-  reencode: string;
+  reencode: string | null; // JSON stringified
   createdAt: number;
   updatedAt: number;
   liveAt?: number;
@@ -44,4 +45,6 @@ interface _DBActionLogEntry extends Table {
   message: string;
   details: string; // JSON stringified
 }
-type DBActionLogEntry = ConvertTable<_DBActionLogEntry>
+
+type DBActionLogEntry = ConvertTable<_DBActionLogEntry>;
+

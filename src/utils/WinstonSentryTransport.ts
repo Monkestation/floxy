@@ -43,7 +43,7 @@ class ExtendedError extends Error {
 }
 
 export class SentryTransport extends TransportStream {
-  public silent = false;
+  public override silent = false;
 
   private levelsMap: SeverityOptions = {};
 
@@ -109,7 +109,7 @@ export class SentryTransport extends TransportStream {
     return callback();
   }
 
-  end(...args: any[]) {
+  override end(...args: any[]) {
     Sentry.flush().then(() => {
       super.end(...args);
     });

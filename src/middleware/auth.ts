@@ -1,4 +1,4 @@
-import type { FastifyReply, FastifyRequest } from "fastify";
+import type { FastifyInstance, FastifyReply, FastifyRequest, preHandlerAsyncHookHandler } from "fastify";
 import { jwtVerify } from "jose";
 import config from "../config.js";
 import type { FloxyJWTPayload, FloxyUserRole } from "../typings/users.js";
@@ -8,7 +8,7 @@ const secretKey = new TextEncoder().encode(config.JWT_SECRET);
 export const authMiddleware = async (
   req: FastifyRequest,
   res: FastifyReply,
-  next: () => void
+
 ) => {
   const authHeader = req.headers.authorization;
   if (!authHeader?.startsWith("Bearer ")) {
@@ -27,7 +27,7 @@ export const authMiddleware = async (
     }
 
     req.user = dbUser;
-    next();
+    return
   } catch {
     return res.status(403).send({ error: "Invalid token" });
   }

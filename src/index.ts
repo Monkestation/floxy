@@ -19,6 +19,8 @@ if (!process.env.CACHE_FOLDER) {
     `CACHE_FOLDER not set. Defaulting to: ${config.CACHE_FOLDER}`
   );
 }
+if (!process.env.YTDLP_COOKIES_PATH)
+  logger.warn(`YTDLP_COOKIES_PATH not set. Defaulting to: ${config.YTDLP_COOKIES_PATH || "No cookies.txt found"}`);
 
 if (!process.env.DATABASE_FILE) {
   logger.warn(
@@ -33,6 +35,7 @@ if (!process.env.ADMIN_PASSWORD) {
 }
 
 const floxyInstance = new Floxy({
+  webserverHost: config.HOST,
   cacheFolder: config.CACHE_FOLDER,
   ytdlpPath: config.YTDLP_PATH,
   ffmpegPath: config.FFMPEG_PATH,
@@ -41,5 +44,21 @@ const floxyInstance = new Floxy({
   adminPassword: config.ADMIN_PASSWORD,
 });
 
-await floxyInstance.setup();
-await floxyInstance.start();
+process.on("uncaughtException", (error) => {
+  logger.error("uncaughtException", error);
+});
+
+process.on("unhandledRejection", (error) => {
+  logger.error("unhandledRejection", error);
+});
+
+
+try {
+  logger.info("Setting up Floxy");
+  await floxyInstance.setup();
+  logger.info("Starting Floxy");
+  await floxyInstance.start();
+} catch (error) {
+  logger.error("Error occured starting Floxy:", error);
+  
+}

@@ -6,8 +6,14 @@
   - query params:
     - url: required, string, link to media to attempt to download.
     - ttl: optional, number (seconds), time this media should be available on the cache for, defaults to config/env setting
-    - reencode: optional, string (Mime type with params, support codecs only), example: `audio/mp3;rate=320000` or `audio/mp3;rate=320000` `audio/ogg;codec=opus;bitrate=128000` as an example
+    - reencode: optional, string, must be one of the supported profiles, provided at /api
     - extra: optional, JSON string, notes to store about this particular cache. example: ckey info, player info,
+`POST /api/ytdlp| /api/ytdlp/:id` - Given a url, will fetch and return the raw JSON from yt-dlp's -J param
+  At least of the following is required.
+  - Url Params:
+    - id: string, media entry ID 
+  - query params:
+    - url: string, link to media
 
 `GET /api/media/:id` - Get a media cache, returns JSON, includes data about the media, valid means it's still valid on the server, provides path on webserver from root (/) to the audio/media file to serve.will also include metadata about the file if it finds it in the MP3/ogg/medias data or whatever. should return length of audio too in millisecond.
 

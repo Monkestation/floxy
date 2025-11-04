@@ -14,7 +14,8 @@
 			"!logs",
 			"!src/utils/WinstonSentryTransport.ts",
 			"!src/routes/_template.ts",
-			"!cache"
+			"!cache",
+			"!node_modules"
 		]
 	},
 	"formatter": {

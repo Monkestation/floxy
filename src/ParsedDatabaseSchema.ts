@@ -16,10 +16,13 @@ export const Schema = [
     columns: [
       { name: "id", type: "text" },
       { name: "url", type: "text" },
+      { name: "extension", type: "text" },
       { name: "status", type: "text" },
       { name: "metadata", type: "text" },
+      { name: "reencode", type: "text" },
       { name: "createdAt", type: "integer" },
       { name: "updatedAt", type: "integer" },
+      { name: "liveAt", type: "integer" },
       { name: "deleted", type: "boolean" },
       { name: "ttl", type: "integer" },
     ],

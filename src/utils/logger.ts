@@ -7,6 +7,9 @@ import config from "../config.js";
 import { getFilenameFriendlyUTCDate } from "./other.js";
 import { SentryTransport } from './WinstonSentryTransport.js';
 
+Error.stackTraceLimit = 100
+
+
 if (config.SENTRY_DSN) {
   Sentry.init({
     dsn: config.SENTRY_DSN,
@@ -23,10 +26,10 @@ if (config.DEBUG) {
 }
 
 const logPath = pathJoin(
-  process.cwd(),
-  "logs",
+  config.LOGS_PATH,
   `${getFilenameFriendlyUTCDate()}${config.DEBUG ? ".debug" : ""}.json`
 );
+
 console.log(`"Logging (JSON Lines) to ${logPath}"`);
 const transports = [];
 
@@ -43,7 +46,6 @@ transports.push(
     handleExceptions: true,
   })
 );
-
 
 if (config.SENTRY_DSN) {
   transports.push(
@@ -66,6 +68,8 @@ if (config.LOGGER_PRETTY) {
           message: true,
           colors: {
             info: "blue",
+            trace: "gray",
+            fatal: "red"
           },
           level: true,
         }),

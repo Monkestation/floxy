@@ -20,6 +20,7 @@ export default class Floxy {
   database: DatabaseManager;
   config: {
     adminPassword: string;
+    webserverHost: string;
     webserverPort: number;
     ffmpegPath?: string;
     ytdlpPath?: string;
@@ -28,6 +29,7 @@ export default class Floxy {
   }
 
   constructor({
+    webserverHost,
     webserverPort = 3050,
     cacheFolder,
     ytdlpPath,
@@ -35,14 +37,16 @@ export default class Floxy {
     databaseFilePath,
     adminPassword
   }: {
+    webserverHost: string;
+    webserverPort?: number;
     cacheFolder: string;
     ytdlpPath?: string;
     ffmpegPath?: string;
-    webserverPort?: number;
     databaseFilePath: string;
     adminPassword: string;
   }) {
     this.config = {
+      webserverHost,
       webserverPort,
       cacheFolder,
       ffmpegPath,
@@ -75,15 +79,20 @@ export default class Floxy {
   }
   
   public async setup() {
+    logger.debug("Setting up Fastify decorations")
     this.fastify.decorate("ytdlp", this.ytdlp);
     this.fastify.decorate("mediaCacheService", this.mediaCacheService);
     this.fastify.decorate("logger", fastifyLogger);
     this.fastify.floxy = this;
+    logger.debug("Registering fastify plugins");
     this.registerFastifyPlugins();
     this.setupFastifyLogging();
-    this.registerRoutes();
-    this.database.initSchema();
-    this.createBaseUsers();
+    logger.debug("Registering fastify Routes");
+    await this.registerRoutes();
+    await this.database.initSchema();
+    logger.debug("Creating base users");
+    await this.createBaseUsers();
+    logger.debug("Setting up Fastify logging");
   }
 
 
@@ -100,21 +109,21 @@ export default class Floxy {
       reply.status(404).send({ message: 'Not found' });
     });
 
-    this.fastify.setErrorHandler((error, request, reply) => {
-      this.fastify.logger.debug(`Request url: ${request.url}` );
-      this.fastify.logger.debug(`Payload `, request.body);
-      this.fastify.logger.error(`Error occurred `, error);
-
-      reply.status(500).send({ message: 'Error occurred during request' });
-    });
+    // this.fastify.setErrorHandler((error, request, reply) => {
+    //   this.fastify.logger.debug(`Request url: ${request.url}` );
+    //   this.fastify.logger.debug(`Payload `, request.body);
+    //   this.fastify.logger.error(`Error occurred `, error);
+    //   // reply.status(500).send({ message: 'Error occurred during request' });
+    //   return req
+    // });
 
     Sentry.setupFastifyErrorHandler(this.fastify);
   }
 
-  private registerRoutes() {
-    this.fastify.register(AuthRoutes(this));
-    this.fastify.register(MediaRoutes(this));
-    this.fastify.register(OtherRoutes(this));
+  private async registerRoutes() {
+    await this.fastify.register(AuthRoutes(this));
+    await this.fastify.register(MediaRoutes(this));
+    await this.fastify.register(OtherRoutes(this));
   }
 
   private async createBaseUsers() {
@@ -133,12 +142,12 @@ export default class Floxy {
   public async start() {
     try {
       await this.fastify.listen({
+        host: this.config.webserverHost, 
         port: this.config.webserverPort,
       });
-      logger.info(`Server is running on port ${this.config.webserverPort}`);
     } catch (error) {
       logger.error("Failed to start server:", error);
-      process.exit(1);
+      process.exitCode = 1;
     }
   }
 }
