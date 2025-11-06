@@ -1,4 +1,4 @@
-import type { FastifyInstance, FastifyReply, FastifyRequest, preHandlerAsyncHookHandler } from "fastify";
+import type { FastifyReply, FastifyRequest } from "fastify";
 import { jwtVerify } from "jose";
 import config from "../config.js";
 import type { FloxyJWTPayload, FloxyUserRole } from "../typings/users.js";

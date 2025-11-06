@@ -1,9 +1,12 @@
-/** biome-ignore-all lint/suspicious/noThenProperty: <explanation> */
-import type { JsonSchemaToTsProvider, } from "@fastify/type-provider-json-schema-to-ts";
+/** biome-ignore-all lint/suspicious/noThenProperty: JSON schema. it's fine, it's an object not a function, and theres no fucking way fstify is going to await a schema. */
+import type { JsonSchemaToTsProvider } from "@fastify/type-provider-json-schema-to-ts";
 import fastifyPlugin from "fastify-plugin";
 import type { JSONSchema } from "json-schema-to-ts";
+import path from "node:path";
 import type Floxy from "../classes/Floxy.js";
+import config from "../config.js";
 import { authMiddleware } from "../middleware/auth.js";
+import { MediaLink } from "../utils/links.js";
 
 export default (floxy: Floxy) => fastifyPlugin((fastify, _opts) => {
   fastify.withTypeProvider<JsonSchemaToTsProvider>().post(
@@ -55,7 +58,14 @@ export default (floxy: Floxy) => fastifyPlugin((fastify, _opts) => {
           });
         }
       }
-      const entry = await floxy.mediaCacheService.enqueue(req.query.url, {
+      const mediaUrl = new MediaLink(req.query.url);
+      if (!mediaUrl.isSingle()) {
+        return res.status(400).send({
+          message: "Playlists are not supported.",
+        });
+      }
+      mediaUrl.normalize();
+      const entry = await floxy.mediaCacheService.enqueue(mediaUrl.url, {
         reencode: req.query.profile
           ? {
               profile: req.query.profile,
@@ -68,5 +78,31 @@ export default (floxy: Floxy) => fastifyPlugin((fastify, _opts) => {
       return entry
     }
   );
-  return true
+  fastify.get<{
+    Params: {
+      id: string;
+    }
+  }>("/api/media/:id", {
+    preValidation: [authMiddleware],
+  }, async (req, res) => {
+    const { id } = req.params;
+
+    const entry = await floxy.mediaCacheService.getById(id);
+    if (!entry) {
+      return res.status(404).send({
+        error: "Entry not found",
+      });
+    }
+
+    const endpoints = config.EXTERNAL_CACHE_ENDPOINTS.map((e) =>
+      path.join(e, entry.id, `output.${entry.extention}`)
+    );
+    return {
+      ...entry.toJSON(),
+      endpoints: entry.IsCompleted() ? endpoints : null,
+    } as ReturnType<typeof entry.toJSON> & {
+      endpoints?: string[]
+    }
+
+  })
 });

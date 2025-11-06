@@ -107,15 +107,26 @@ export class DatabaseManager {
   public async getMediaEntryById(id: string) {
     const entry = await this.client<DBMediaEntry>("media")
       .select()
-      .where({ id });
+      .where({ id })
+      .first();
     return entry;
   }
 
   public async getMediaEntryByUrl(url: string) {
     const entry = await this.client<DBMediaEntry>("media")
       .select()
-      .where({ url });
+      .where({ url })
+      .first()
     return entry;
+  }
+
+  public async getAllMediaEntries(page?: number, pageSize?: number): Promise<DBMediaEntry[]> {
+    let query = this.client<DBMediaEntry>("media").select();
+    if (page !== undefined && pageSize !== undefined) {
+      query = query.offset((page - 1) * pageSize).limit(pageSize);
+    }
+    const entries = await query;
+    return entries;
   }
 
   // this shit below is kinda gay af and i need to find a better way to do it because why would you update by url.

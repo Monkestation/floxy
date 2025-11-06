@@ -1,3 +1,4 @@
+/** biome-ignore-all lint/complexity/useLiteralKeys: i dont wannya!! */
 export function validateMimeType(mimeType: string): boolean {
   const mimeTypePattern = /(?<type>\w+)\/(?<subtype>[\w.-]+)(?:\+(?<suffix>[\w.-]+))*(?:\s*;\s*(?<key>[^=]+?)(?:=""?(?<value>[\S.-]+?)""?)?)*$/;
   return mimeTypePattern.test(mimeType);
@@ -65,8 +66,7 @@ export interface EncodingProfile {
   format: string; // container (mp4, ogg, etc)
   codec: string; // h264, opus,
   type: "video" | "audio";
-  bitrate: BitrateRange;
-  description?: string;
+  audio_bitrate?: BitrateRange;
   // extra?: Record<string, any>;
 }
 
@@ -75,29 +75,21 @@ export const VIDEO_PROFILES = {
     format: "mp4",
     codec: "h264",
     type: "video",
-    bitrate: { min: 500_000, max: 8_000_000, default: 2_000_000 },
-    description: "Standard MP4 container with H.264 (AVC) video.",
   } as const,
   "mp4-hevc": {
     format: "mp4",
     codec: "hevc",
     type: "video",
-    bitrate: { min: 400_000, max: 6_000_000, default: 1_500_000 },
-    description: "MP4 container with HEVC (H.265), efficient compression.",
   } as const,
   "webm-vp9": {
     format: "webm",
     codec: "vp9",
     type: "video",
-    bitrate: { min: 300_000, max: 6_000_000, default: 1_200_000 },
-    description: "WebM container with VP9 video (modern, open codec).",
   } as const,
   "webm-av1": {
     format: "webm",
     codec: "av1",
     type: "video",
-    bitrate: { min: 200_000, max: 5_000_000, default: 1_000_000 },
-    description: "WebM container with AV1 (next-gen open codec).",
   } as const,
 };
 
@@ -106,29 +98,25 @@ export const AUDIO_PROFILES = {
     format: "mp3",
     codec: "mp3",
     type: "audio",
-    bitrate: { min: 64_000, max: 320_000, default: 192_000 },
-    description: "MPEG Layer III audio (legacy but widely supported).",
+    audio_bitrate: { min: 64_000, max: 320_000, default: 192_000 },
   } as const,
   "ogg-opus": {
     format: "opus",
     codec: "opus",
     type: "audio",
-    bitrate: { min: 48_000, max: 256_000, default: 128_000 },
-    description: "Opus in Ogg container (modern, efficient speech/music).",
+    audio_bitrate: { min: 48_000, max: 256_000, default: 128_000 },
   } as const,
   "aac-m4a": {
     format: "m4a",
     codec: "aac",
     type: "audio",
-    bitrate: { min: 64_000, max: 320_000, default: 192_000 },
-    description: "AAC audio in M4A container (used in MP4 and iTunes).",
+    audio_bitrate: { min: 64_000, max: 320_000, default: 192_000 },
   } as const,
   flac: {
     format: "flac",
     codec: "flac",
     type: "audio",
-    bitrate: { min: 500_000, max: 1_500_000, default: 1_000_000 },
-    description: "Lossless FLAC compression (for archival or high quality).",
+    audio_bitrate: { min: 500_000, max: 1_500_000, default: 1_000_000 },
   } as const,
 } ;
 
@@ -154,10 +142,11 @@ export function getProfile(id?: "AUDIO" | "VIDEO" | keyof typeof PROFILES | stri
   }
 }
 
-export function validateProfileBitrate(profileId: string, bitrate: number): boolean {
+export function validateProfileBitrate(profileId: string, bitrate: number): boolean | null {
   const p = getProfile(profileId);
   if (!p) return false;
-  return bitrate >= p.bitrate.min && bitrate <= p.bitrate.max;
+  if (!p.audio_bitrate) return null;
+  return bitrate >= p.audio_bitrate.min && bitrate <= p.audio_bitrate.max;
 }
 
 export function parseBitrate(bitrate: string | number): number {
@@ -175,6 +164,7 @@ export function parseBitrate(bitrate: string | number): number {
     const match = lowerBitrate.match(/^(\d+(\.\d+)?)([kmg])$/);
 
     if (match) {
+      // biome-ignore lint/style/noNonNullAssertion: dairy queen
       const value = parseFloat(match[1]!);
       const unit = match[3];
 
@@ -216,10 +206,10 @@ export class MediaProfileError extends Error {
 export class MediaBitrateOutOfRangeError extends Error {
   constructor(profile: string, bitrate: number) {
     const {
-      bitrate: {
+      audio_bitrate: {
         min: minBitrate,
         max: maxBitrate
-      }
+      } = { min: 0, max: 0 }
     } = getProfile(profile);
     super(`Bitrate ${bitrate} is not a valid bitrate for profile '${profile}' (Min: ${minBitrate} Max: ${maxBitrate}).`);
   }

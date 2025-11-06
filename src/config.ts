@@ -9,6 +9,7 @@ const config = {
   HOST: process.env.HOST || "127.0.0.1",
   PORT: Number(process.env.PORT) || 3050,
   JWT_SECRET: process.env.JWT_SECRET ?? "supersecretkey",
+  DELETION_SECRET: process.env.DELETION_SECRET ?? "STRONGDELETIONSECRET",
   ADMIN_PASSWORD: process.env.ADMIN_PASSWORD ?? "changeme123!",
   SENTRY_DSN: process.env.SENTRY_DSN,
   CACHE_FOLDER: path.resolve(

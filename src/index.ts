@@ -8,6 +8,15 @@ if (!config.JWT_SECRET || config.JWT_SECRET === "supersecretkey") {
   );
 }
 
+if (
+  !config.DELETION_SECRET ||
+  config.DELETION_SECRET === "STRONGDELETIONSECRET"
+) {
+  throw new ConfigurationError(
+    "Invalid DELETION_SECRET: it is required and cannot be 'STRONGDELETIONSECRET'."
+  );
+}
+
 if (!process.env.EXTERNAL_CACHE_ENDPOINTS) {
   logger.warn(
     "EXTERNAL_CACHE_ENDPOINTS not set."

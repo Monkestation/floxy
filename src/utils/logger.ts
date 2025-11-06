@@ -1,3 +1,4 @@
+/** biome-ignore-all lint/suspicious/noExplicitAny: its a logger... */
 
 
 import * as Sentry from '@sentry/node';

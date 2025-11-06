@@ -12,6 +12,12 @@ then removes it once it's done playing on the game server.
 note things
 - When files get "deleted" we append a random deleted string so its unknown when we serve it.
 
+# TODO
+
+- [ ] normalize API responses, i am getting tired of deciding between error or message or error AND message for errors n shit
+- [ ] figure out a better way to specify quality while also keeping track of what the file extension will be.
+- [ ] support tracklists maybe? (albums/playlists/EPs/etc) far into the future.
+
 # Buhbuh
 
 Floxy will not serve files for you, you must have a reverse proxy config setup to hit the API. You are responsible for the webserver that serves the cache

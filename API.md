@@ -8,12 +8,69 @@
     - ttl: optional, number (seconds), time this media should be available on the cache for, defaults to config/env setting
     - reencode: optional, string, must be one of the supported profiles, provided at /api
     - extra: optional, JSON string, notes to store about this particular cache. example: ckey info, player info,
-`POST /api/ytdlp| /api/ytdlp/:id` - Given a url, will fetch and return the raw JSON from yt-dlp's -J param
+`POST /api/ytdlp |/api/ytdlp/:id` - Given a url, will fetch and return the raw JSON from yt-dlp's -J param
   At least of the following is required.
   - Url Params:
     - id: string, media entry ID 
   - query params:
     - url: string, link to media
+Example output for single:
+```json
+{
+	"title": "Traumatic Glitch",
+	"artist": "Flleeppyy",
+	"album": "Monkestation Lobby Jams Vol. 1",
+	"albumArtist": [
+		"Flleeppyy",
+		"Chronoquest",
+		"T87-Sulfurhead",
+		"AMPMATIC"
+	],
+	"year": 2025,
+	"genre": [
+		"electronic",
+		"California"
+	],
+	"duration": 200.555,
+	"url": "https://flleeppyy.bandcamp.com/track/traumatic-glitch"
+}
+```
+
+Example output for album/playlist
+```json
+[
+	{
+		"title": "Artificial",
+		"artist": "Flleeppyy",
+		"album": "Artificial Flavoring",
+		"albumArtist": [
+			"Flleeppyy"
+		],
+		"year": 2024,
+		"genre": [
+			"electronic",
+			"California"
+		],
+		"duration": 274.909,
+		"url": "https://flleeppyy.bandcamp.com/track/artificial-2"
+	},
+	{
+		"title": "Flavoring",
+		"artist": "Flleeppyy",
+		"album": "Artificial Flavoring",
+		"albumArtist": [
+			"Flleeppyy"
+		],
+		"year": 2024,
+		"genre": [
+			"electronic",
+			"California"
+		],
+		"duration": 255.469,
+		"url": "https://flleeppyy.bandcamp.com/track/flavoring"
+	}
+]
+```
 
 `GET /api/media/:id` - Get a media cache, returns JSON, includes data about the media, valid means it's still valid on the server, provides path on webserver from root (/) to the audio/media file to serve.will also include metadata about the file if it finds it in the MP3/ogg/medias data or whatever. should return length of audio too in millisecond.
 
