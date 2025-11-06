@@ -48,13 +48,13 @@ export class DatabaseManager {
 
       if (["better-sqlite3", "sqlite3"].includes(connClient)) {
         const result = await this.client.raw<{ name: string }[]>(
-          `PRAGMA table_info(${table.name});`,
+          `PRAGMA table_info(${table.name});`
         );
         for (const column of result)
           existingColumns.push({ name: column.name });
       } else if (["mysql", "mysql2"].includes(connClient)) {
         const result = await this.client.raw<{ Field: string }[][]>(
-          `SHOW columns from ${table.name}`,
+          `SHOW columns from ${table.name}`
         );
         if (result && result.length !== 0 && Array.isArray(result[0]))
           for (const column of result[0])
@@ -87,7 +87,7 @@ export class DatabaseManager {
       for (const column of existingColumns) {
         if (!table.columns.some((c) => c.name === column.name)) {
           logger.debug(
-            `Table ${table.name} column ${column.name} not in schema`,
+            `Table ${table.name} column ${column.name} not in schema`
           );
           await this.client.schema.table(table.name, (k) => {
             k.dropColumn(column.name);
@@ -116,11 +116,14 @@ export class DatabaseManager {
     const entry = await this.client<DBMediaEntry>("media")
       .select()
       .where({ url })
-      .first()
+      .first();
     return entry;
   }
 
-  public async getAllMediaEntries(page?: number, pageSize?: number): Promise<DBMediaEntry[]> {
+  public async getAllMediaEntries(
+    page?: number,
+    pageSize?: number
+  ): Promise<DBMediaEntry[]> {
     let query = this.client<DBMediaEntry>("media").select();
     if (page !== undefined && pageSize !== undefined) {
       query = query.offset((page - 1) * pageSize).limit(pageSize);
@@ -129,6 +132,13 @@ export class DatabaseManager {
     return entries;
   }
 
+  public async getExpiredMediaEntries(): Promise<DBMediaEntry[]> {
+    return this.client<DBMediaEntry>("media")
+      .select()
+      .where("deleted", false)
+      .andWhereRaw("(liveAt + ttl) <= strftime('%s','now')");
+  }
+  
   // this shit below is kinda gay af and i need to find a better way to do it because why would you update by url.
 
   public async upsertMediaById(id: string, data: Partial<DBMediaEntry>) {
@@ -212,7 +222,7 @@ export class DatabaseManager {
       passwordHash: string;
       email: string;
       role: FloxyUserRole;
-    }>,
+    }>
   ): Promise<DBFloxyUser> {
     const now = Date.now();
 
@@ -253,14 +263,13 @@ export class DatabaseManager {
     await this.client<DBFloxyUser>("users").where({ id }).delete();
   }
 
-
   /** END USERS */
 
   public async createLogEntry(
     action: string,
     userId: string,
     message: string,
-    details: Record<string, unknown>,
+    details: Record<string, unknown>
   ) {
     const id = crypto.randomUUID();
     const timestamp = Date.now();
