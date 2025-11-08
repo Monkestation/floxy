@@ -163,7 +163,20 @@ export default (floxy: Floxy) => fastifyPlugin((fastify, _opts) => {
         error: "Entry not found",
       });
     }
+
+    if (!entry.IsCompleted()) {
+      return res.status(400).send({
+        error: "Cannot delete an entry that is still processing",
+      });
+    }
+
+    if (entry.deleted) {
+      return res.status(204).send({
+        message: "Entry is already deleted",
+      });
+    }
     
+
     await floxy.mediaCacheService.deleteById(id);
     return res.status(204).send();
   });
