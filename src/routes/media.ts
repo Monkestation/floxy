@@ -9,6 +9,48 @@ import { authMiddleware } from "../middleware/auth.js";
 import { MediaLink } from "../utils/links.js";
 
 export default (floxy: Floxy) => fastifyPlugin((fastify, _opts) => {
+  // fastify get all media with paginatoin
+  fastify.get<{
+    Querystring: {
+      page?: number;
+      limit?: number;
+    }
+  }>("/api/media", {
+    preValidation: [authMiddleware],
+    schema: {
+      querystring: {
+        type: "object",
+        properties: {
+          page: {
+            type: "number",
+            minimum: 1,
+            default: 1,
+          },
+          limit: {
+            type: "number",
+            minimum: 1,
+            maximum: 100,
+            default: 20,
+          },
+        },
+      } as const satisfies JSONSchema,
+    },
+  }, async (req, _res) => {
+    const page = req.query.page ?? 1;
+    const limit = req.query.limit ?? 20;
+    
+    const entries = await floxy.mediaCacheService.getAll(
+      page,
+      limit,
+    );
+    return {
+      entries: entries.map((e) => e.toJSON()),
+      total: entries.length,
+      page,
+      limit,
+    };
+  });
+
   fastify.withTypeProvider<JsonSchemaToTsProvider>().post(
     "/api/media/queue",
     {
@@ -104,5 +146,26 @@ export default (floxy: Floxy) => fastifyPlugin((fastify, _opts) => {
       endpoints?: string[]
     }
 
-  })
+  });
+
+  fastify.delete<{
+    Params: {
+      id: string;
+    }
+  }>("/api/media/:id", {
+    preValidation: [authMiddleware],
+  }, async (req, res) => {
+    const { id } = req.params;
+    
+    const entry = await floxy.mediaCacheService.getById(id);
+    if (!entry) {
+      return res.status(404).send({
+        error: "Entry not found",
+      });
+    }
+    
+    await floxy.mediaCacheService.deleteById(id);
+    return res.status(204).send();
+  });
+
 });

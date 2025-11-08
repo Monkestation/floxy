@@ -3,7 +3,7 @@ import { promises as fsp } from "node:fs";
 import path from "node:path";
 import type { VideoProgress } from "ytdlp-nodejs";
 import config from "../config.js";
-import { dirExists } from "../utils/fs.js";
+import { dirExists, statExists } from "../utils/fs.js";
 import logger from "../utils/logger.js";
 import * as Media from "../utils/media.js";
 import type Floxy from "./Floxy.js";
@@ -11,13 +11,13 @@ import type { MediaMetadata } from "./MetadataParser.js";
 
 /**
 What this does:
- - Manages a cache of media files downloaded and processed via ytdlp and ffmpeg
- - Keeps track of cache entries, their status, and metadata
- - Provides methods to enqueue new media for caching, check status, and retrieve cached media
- - Periodically processes the queue of pending media cache entries
+  - Manages a cache of media files downloaded and processed via ytdlp and ffmpeg
+  - Keeps track of cache entries, their status, and metadata
+  - Provides methods to enqueue new media for caching, check status, and retrieve cached media
+  - Periodically processes the queue of pending media cache entries
 
 Flow:
- - When a new media URL is requested to be cached, check if it already exists in the cache
+  - When a new media URL is requested to be cached, check if it already exists in the cache
   - If not, create a new cache entry with status "pending" and add it to the queue
   - A background process periodically checks the queue for pending entries
   - For each pending entry, it starts downloading and processing the media using ytdlp and ffmpeg
@@ -59,7 +59,6 @@ export default class MediaCacheService {
   ) {
     // no dont do this probably especially if its different encoding data??? i dunno
     const existing = await this.getByUrl(url);
-    if (existing) return existing;
 
     let profile = Media.getProfile(options.reencode?.profile);
     if (options.reencode && !profile) {
@@ -78,6 +77,37 @@ export default class MediaCacheService {
         options.reencode.profile || "AUDIO",
         options.reencode.bitrate
       );
+    }
+
+    if (existing) {
+      const fileState = await existing.getFileState();
+
+      if (fileState & MediaEntryFileState.MISSING) {
+        logger.info(
+          `Media files for ${existing.id} are missing. Resetting status to PENDING.`
+        );
+        existing.status = MediaQueueStatus.PENDING;
+        existing.updatedAt = Date.now();
+        void existing.writeToDb();
+      } else if (
+        options.reencode &&
+        (existing.reencode.profile !== options.reencode.profile ||
+          existing.reencode.bitrate !== options.reencode.bitrate)
+      ) {
+        logger.info(
+          `Reencode parameters for ${existing.id} differ. Adding forcerencode flag.`
+        );
+        existing.reencode = {
+          ...existing.reencode,
+          profile: options.reencode.profile as keyof typeof Media.PROFILES,
+          bitrate: options.reencode.bitrate,
+        };
+        existing.forcerencode = true;
+        existing.updatedAt = Date.now();
+        void existing.writeToDb();
+      }
+
+      return existing;
     }
 
     const entry = new MediaCacheEntry(this.floxy, this, {
@@ -138,7 +168,7 @@ export default class MediaCacheService {
           `Marking media cache entry ${dbEntry.id} as deleted (expired)`
         );
 
-        fsp
+        await fsp
           .rename(
             path.join(
               this.cacheFolder,
@@ -190,33 +220,39 @@ export default class MediaCacheService {
       }
 
       if (folderExists) {
-        const expectedPath = path.join(
-          this.cacheFolder,
-          entry.id,
-          `output.${entry.extention}`
-        );
         // TODO: make this its own function for entries, like entry.getDeletedPath() or something
-        const deletedPath = path.join(
-          this.cacheFolder,
-          entry.id,
-          `output_deleted_${config.DELETION_SECRET}.${entry.extention}`
-        );
-        const existsOnDisk = await dirExists(expectedPath);
-        const existsDeletedOnDisk = await dirExists(deletedPath);
-        if (existsOnDisk && existsDeletedOnDisk) {
+        const fileState = await entry.getFileState();
+
+        if (
+          fileState & MediaEntryFileState.AVAILABLE &&
+          fileState & MediaEntryFileState.DELETED
+        ) {
           // the fuck??...
-          await fsp.unlink(expectedPath);
+          await fsp.unlink(entry.cachedPath);
         }
-        if (existsDeletedOnDisk) {
+
+        if (fileState & MediaEntryFileState.DELETED) {
           // rename it back
-          await fsp.rename(deletedPath, expectedPath);
+          await fsp.rename(entry.deletedPath, entry.cachedPath);
         }
-        if (existsOnDisk) {
+
+        if (fileState & MediaEntryFileState.AVAILABLE && !entry.forcerencode) {
           logger.info(
             `Media cache entry ${entry.id} already exists on disk, skipping download.`
           );
           entry.status = MediaQueueStatus.COMPLETED;
           return;
+        }
+
+        if (entry.forcerencode) {
+          logger.info(
+            `Media cache entry ${entry.id} has force reencode flag set, proceeding with reencoding.`
+          );
+          await fsp.unlink(entry.cachedPath).catch((err) => {
+            logger.warn(
+              `Failed to delete existing file for force reencode of ${entry.id}: ${err}`
+            );
+          });
         }
       }
 
@@ -315,7 +351,17 @@ export default class MediaCacheService {
   // Public functions
 
   public async getByUrl(url: string) {
-    return this.cache.values().find((e) => e.url === url);
+    const inCache = this.cache.values().find((e) => e.url === url);
+    if (!inCache) {
+      const foundEntry = await this.floxy.database.getMediaEntryByUrl(url);
+      if (foundEntry) {
+        const entry = MediaCacheEntry.fromDb(this.floxy, foundEntry);
+        this.cache.set(entry.id, entry);
+        return entry;
+      }
+    }
+
+    return inCache;
   }
 
   public async getById(id: string): Promise<MediaCacheEntry | undefined> {
@@ -330,6 +376,43 @@ export default class MediaCacheService {
     }
 
     return inCache;
+  }
+
+  public async getAll(
+    page?: number,
+    limit?: number
+  ): Promise<MediaCacheEntry[]> {
+    const dbEntries = await this.floxy.database.getAllMediaEntries(
+      page,
+      limit
+    );
+    const entries: MediaCacheEntry[] = [];
+    for (const dbEntry of dbEntries) {
+      let entry = this.cache.get(dbEntry.id);
+      if (!entry) {
+        entry = MediaCacheEntry.fromDb(this.floxy, dbEntry);
+        this.cache.set(entry.id, entry);
+      }
+      entries.push(entry);
+    }
+    return entries;
+  }
+
+  async deleteById(id: string) {
+    const entry = await this.getById(id);
+
+    if (!entry) return;
+
+    if (entry.deleted) return;
+
+    await fsp.rename(entry.cachedPath, entry.deletedPath).catch((err) => {
+      logger.error(`Failed to rename media cache entry ${entry.id}: ${err}`);
+    });
+    entry.deleted = true;
+    void this.floxy.database.upsertMediaById(entry.id, {
+      deleted: true,
+    });
+    return true;
   }
 
   public getFriendlyStats() {
@@ -366,6 +449,7 @@ class MediaCacheEntry {
     profile?: keyof typeof Media.PROFILES;
     bitrate?: number;
   };
+  forcerencode: boolean = false;
 
   constructor(
     floxy: Floxy,
@@ -449,9 +533,47 @@ class MediaCacheEntry {
     return dirExists(path.join(this.cacheService.cacheFolder, this.id));
   }
 
-  async getUrls() {
-    return;
+  async getFileState(): Promise<MediaEntryFileState> {
+    
+    const outputPath = this.cachedPath;
+    const deletedPath = this.deletedPath;
+    
+    const outputExists = await statExists(outputPath);
+    const deletedExists = await statExists(deletedPath);
+
+    let state = 0;
+    if (outputExists) {
+      state |= MediaEntryFileState.AVAILABLE;
+    }
+    if (deletedExists) {
+      state |= MediaEntryFileState.DELETED;
+    }
+    if (!outputExists && !deletedExists) {
+      state |= MediaEntryFileState.MISSING;
+    }
+    return state;
   }
+
+  get deletedPath() {
+    return path.join(
+      this.cacheService.cacheFolder,
+      this.id,
+      `output_deleted_${config.DELETION_SECRET}.${this.extention}`
+    );
+  }
+
+  get cachedPath() {
+    return path.join(
+      this.cacheService.cacheFolder,
+      this.id,
+      `output.${this.extention}`
+    );
+  }
+
+  get directoryPath() {
+    return path.join(this.cacheService.cacheFolder, this.id);
+  }
+
 
   toJSON() {
     return {
@@ -480,4 +602,13 @@ export enum MediaQueueStatus {
   METADATA = "metadata",
   COMPLETED = "completed",
   FAILED = "failed",
+}
+
+export enum MediaEntryFileState {
+  // File is on disk and available in the cache
+  AVAILABLE = 1 << 0,
+  // File is on disk but marked as deleted
+  DELETED = 1 << 1,
+  // Neither the output file nor the deleted file is present on disk
+  MISSING = 1 << 2,
 }

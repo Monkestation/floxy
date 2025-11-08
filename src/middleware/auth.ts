@@ -35,7 +35,7 @@ export const authMiddleware = async (
 
 export const authNeedsRoleMiddleware =
   (requiredRole: FloxyUserRole) =>
-    async (req: FastifyRequest, res: FastifyReply, next: () => void) => {
+    async (req: FastifyRequest, res: FastifyReply) => {
       const user = req.user;
       if (!user) {
         return res.status(401).send({ error: "Unauthorized" });
@@ -45,5 +45,4 @@ export const authNeedsRoleMiddleware =
         return res.status(403).send({ error: "Forbidden" });
       }
 
-      next();
     };

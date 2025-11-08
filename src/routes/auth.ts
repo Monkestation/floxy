@@ -3,6 +3,8 @@ import fastifyPlugin from "fastify-plugin";
 import * as jwt from "jose";
 import type Floxy from "../classes/Floxy.js";
 import config from "../config.js";
+import { authMiddleware, authNeedsRoleMiddleware } from "../middleware/auth.js";
+import { FloxyUserRole } from "../typings/users.js";
 
 export default (floxy: Floxy) => fastifyPlugin((fastify, __opts) => {
   fastify.post<{
@@ -57,47 +59,43 @@ export default (floxy: Floxy) => fastifyPlugin((fastify, __opts) => {
       username: string;
       durationHours?: number | null;
     };
-  }>("/api/token", {
-    schema: {
-      body: {
-        type: "object",
-        required: ["username"],
-        properties: {
-          username: { type: "string" },
-          durationHours: { type: ["number", "null"], minimum: 0 },
-        },
-      },
+  }>(
+    "/api/token",
+    {
+      preValidation: [authNeedsRoleMiddleware(FloxyUserRole.ADMIN)],
     },
-  }, async (req, res) => {
-    const { username, durationHours } = req.body;
+    async (req, res) => {
+      const requestingUser = req.user;
+      if (!requestingUser || requestingUser.role !== "admin") {
+        return res.status(403).send({ message: "Forbidden." });
+      }
 
-    const user = await floxy.database.getUserByUsername(username);
-    if (!user) {
-      return res.status(404).send({ message: "User not found." });
+      const { username, durationHours } = req.body;
+      const user = await floxy.database.getUserByUsername(username);
+      if (!user) return res.status(404).send({ message: "User not found." });
+
+      const maxDurationHours = 24 * 30; // 30 days max
+      const hours =
+        durationHours && durationHours > 0
+          ? Math.min(durationHours, maxDurationHours)
+          : maxDurationHours;
+
+      const token = await new jwt.SignJWT({
+        id: user.id,
+        username: user.username,
+        role: user.role,
+      })
+        .setProtectedHeader({ alg: "HS256" })
+        .setIssuedAt()
+        .setExpirationTime(`${hours}h`)
+        .sign(new TextEncoder().encode(config.JWT_SECRET));
+
+      return {
+        token,
+        expiresIn: hours * 3600,
+      };
     }
+  );
 
-    const payload = {
-      id: user.id,
-      username: user.username,
-      role: user.role,
-    };
-
-    const jwtOptions =
-      durationHours && durationHours > 0
-        ? { expiresIn: `${durationHours}h` }
-        : undefined;
-
-    const token = await new jwt.SignJWT(payload)
-      .setProtectedHeader({ alg: "HS256" })
-      .setIssuedAt()
-      .setExpirationTime(jwtOptions ? `${durationHours}h` : "100y")
-      .sign(new TextEncoder().encode(config.JWT_SECRET));
-
-    return {
-      token,
-      expiresIn: durationHours ? durationHours * 3600 : null,
-      permanent: !jwtOptions,
-    };
-  });
 
 });
