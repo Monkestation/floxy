@@ -5,9 +5,13 @@ meta {
 }
 
 delete {
-  url: http://127.0.0.1:3050/api/media/:id
+  url: http://127.0.0.1:3050/api/media/:id?hard=true
   body: none
   auth: inherit
+}
+
+params:query {
+  hard: true
 }
 
 params:path {

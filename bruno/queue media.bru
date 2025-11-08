@@ -18,8 +18,8 @@ params:query {
 
 vars:pre-request {
   url: https://www.youtube.com/watch?v=E_2ZckRiUKY
-  ttl: 3600
-  reencode: audio/ogg;codec=opus;bitrate=128000
+  reencode: ogg-opus
+  ~ttl: 3600
 }
 
 script:post-response {
