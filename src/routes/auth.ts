@@ -93,6 +93,7 @@ export default (floxy: Floxy) => fastifyPlugin((fastify, __opts) => {
       return {
         token,
         expiresIn: hours * 3600,
+        expiresAt: Date.now() + (hours * 3600 * 1000),
       };
     }
   );
