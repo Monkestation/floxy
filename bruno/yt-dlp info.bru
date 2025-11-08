@@ -1,0 +1,24 @@
+meta {
+  name: yt-dlp info
+  type: http
+  seq: 4
+}
+
+get {
+  url: http://127.0.0.1:3050/api/ytdlp?url={{url}}
+  body: none
+  auth: inherit
+}
+
+params:query {
+  url: {{url}}
+}
+
+vars:pre-request {
+  url: https://www.youtube.com/watch?v=GnIIjRH1MnI
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
