@@ -1,0 +1,16 @@
+meta {
+  name: view all media
+  type: http
+  seq: 6
+}
+
+get {
+  url: http://127.0.0.1:3050/api/media/
+  body: none
+  auth: inherit
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

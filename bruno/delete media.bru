@@ -1,0 +1,20 @@
+meta {
+  name: delete media
+  type: http
+  seq: 7
+}
+
+delete {
+  url: http://127.0.0.1:3050/api/media/:id
+  body: none
+  auth: inherit
+}
+
+params:path {
+  id: {{last_media_id}}
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

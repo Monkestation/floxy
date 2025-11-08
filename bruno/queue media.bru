@@ -1,0 +1,32 @@
+meta {
+  name: queue media
+  type: http
+  seq: 3
+}
+
+post {
+  url: http://127.0.0.1:3050/api/media/queue?url={{url}}&reencode={{reencode}}
+  body: none
+  auth: inherit
+}
+
+params:query {
+  url: {{url}}
+  reencode: {{reencode}}
+  ~ttl: {{ttl}}
+}
+
+vars:pre-request {
+  url: https://www.youtube.com/watch?v=E_2ZckRiUKY
+  ttl: 3600
+  reencode: audio/ogg;codec=opus;bitrate=128000
+}
+
+script:post-response {
+  bru.setVar("last_media_id", res.body.id);
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
