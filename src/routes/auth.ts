@@ -62,7 +62,7 @@ export default (floxy: Floxy) => fastifyPlugin((fastify, __opts) => {
   }>(
     "/api/token",
     {
-      preValidation: [authNeedsRoleMiddleware(FloxyUserRole.ADMIN)],
+      preValidation: [authMiddleware, authNeedsRoleMiddleware(FloxyUserRole.ADMIN)],
     },
     async (req, res) => {
       const requestingUser = req.user;
