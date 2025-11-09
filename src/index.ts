@@ -48,6 +48,7 @@ const floxyInstance = new Floxy({
   cacheFolder: config.CACHE_FOLDER,
   ytdlpPath: config.YTDLP_PATH,
   ffmpegPath: config.FFMPEG_PATH,
+  ytdlpCookiesPath: config.YTDLP_COOKIES_PATH,
   webserverPort: config.PORT,
   databaseFilePath: config.DATABASE_FILE,
   adminPassword: config.ADMIN_PASSWORD,

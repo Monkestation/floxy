@@ -290,6 +290,7 @@ export default class MediaCacheService {
         onProgress: (p) => {
           entry.progress = p;
         },
+        cookies: this.floxy.config.ytdlpCookiesPath,
         ...opts,
 
       });
