@@ -101,7 +101,7 @@ export const AUDIO_PROFILES = {
     audio_bitrate: { min: 64_000, max: 320_000, default: 192_000 },
   } as const,
   "ogg-opus": {
-    format: "opus",
+    format: "ogg",
     codec: "opus",
     type: "audio",
     audio_bitrate: { min: 48_000, max: 256_000, default: 128_000 },
