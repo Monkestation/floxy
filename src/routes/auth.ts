@@ -38,7 +38,7 @@ export default (floxy: Floxy) => fastifyPlugin((fastify, __opts) => {
       username: user.username,
       role: user.role,
     })
-      .setProtectedHeader({ alg: "HS256" })
+      .setProtectedHeader({ alg: "EdDSA" })
       .setIssuedAt()
       .setExpirationTime("8h")
       .sign(new TextEncoder().encode(config.JWT_SECRET));
@@ -85,7 +85,7 @@ export default (floxy: Floxy) => fastifyPlugin((fastify, __opts) => {
         username: user.username,
         role: user.role,
       })
-        .setProtectedHeader({ alg: "HS256" })
+        .setProtectedHeader({ alg: "EdDSA" })
         .setIssuedAt()
         .setExpirationTime(`${hours}h`)
         .sign(new TextEncoder().encode(config.JWT_SECRET));
