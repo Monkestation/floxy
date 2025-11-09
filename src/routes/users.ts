@@ -7,18 +7,14 @@ import { isValidEmail } from "../utils/other.js";
 
 export default (floxy: Floxy) =>
   fastifyPlugin((fastify, _opts) => {
-    fastify.get(
-      "/api/users",
-      { preHandler: [authMiddleware] },
-      async (_req, _res) => {
-        const users = await floxy.database.getAllUsers();
+    fastify.get("/api/users", { preHandler: [authMiddleware] }, async (_req, _res) => {
+      const users = await floxy.database.getAllUsers();
 
-        return users.map((user) => ({
-          ...user,
-          passwordHash: undefined,
-        })) as Omit<DBFloxyUser, "passwordHash">[];
-      }
-    );
+      return users.map(user => ({
+        ...user,
+        passwordHash: undefined,
+      })) as Omit<DBFloxyUser, "passwordHash">[];
+    });
     fastify.get<{
       Params: {
         id: string;
@@ -78,10 +74,7 @@ export default (floxy: Floxy) =>
       Params: {
         id: string;
       };
-      Body: Omit<
-        DBFloxyUser,
-        "id" | "passwordHash" | "createdAt" | "updatedAt"
-      > & {
+      Body: Omit<DBFloxyUser, "id" | "passwordHash" | "createdAt" | "updatedAt"> & {
         password?: string;
         [key: string]: unknown;
       };
@@ -104,9 +97,7 @@ export default (floxy: Floxy) =>
         },
       },
       async (req, res) => {
-        const user =
-          (await floxy.database.getUserById(req.params.id)) ||
-          (await floxy.database.getUserByUsername(req.params.id));
+        const user = (await floxy.database.getUserById(req.params.id)) || (await floxy.database.getUserByUsername(req.params.id));
         if (!user) {
           return res.status(404).send({
             message: "User not found.",
@@ -121,16 +112,14 @@ export default (floxy: Floxy) =>
 
         const updatedUser = await floxy.database.updateUserById(req.params.id, {
           ...req.body,
-          passwordHash: req.body.password
-            ? await bcrypt.hash(req.body.password, 12)
-            : undefined,
+          passwordHash: req.body.password ? await bcrypt.hash(req.body.password, 12) : undefined,
         });
 
         return {
           ...updatedUser,
           passwordHash: undefined,
         } as Omit<DBFloxyUser, "passwordHash">;
-      }
+      },
     );
 
     fastify.get("/api/users/me", { preHandler: [authMiddleware] }, async (req, _res) => {
@@ -144,22 +133,18 @@ export default (floxy: Floxy) =>
       Params: {
         id: string;
       };
-    }>(
-      "/api/users/:id",
-      { preHandler: [authMiddleware, authNeedsRoleMiddleware(FloxyUserRole.ADMIN)] },
-      async (req, res) => {
-        const user = await floxy.database.getUserById(req.params.id);
-        if (!user) {
-          return res.status(404).send({
-            message: "User not found.",
-          });
-        }
-
-        await floxy.database.deleteUserById(req.params.id);
-
-        return {
-          message: "User deleted successfully.",
-        };
+    }>("/api/users/:id", { preHandler: [authMiddleware, authNeedsRoleMiddleware(FloxyUserRole.ADMIN)] }, async (req, res) => {
+      const user = await floxy.database.getUserById(req.params.id);
+      if (!user) {
+        return res.status(404).send({
+          message: "User not found.",
+        });
       }
-    );
+
+      await floxy.database.deleteUserById(req.params.id);
+
+      return {
+        message: "User deleted successfully.",
+      };
+    });
   });

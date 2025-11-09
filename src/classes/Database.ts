@@ -33,32 +33,23 @@ export class DatabaseManager {
       const existingColumns: { name: string }[] = [];
 
       if (!(await this.client.schema.hasTable(table.name))) {
-        await this.client.schema.createTable(table.name, (k) => {
+        await this.client.schema.createTable(table.name, k => {
           // Add the necessary columns for each table
           for (const column of table.columns) {
-            const columnType =
-              column.type as keyof Knex.Knex.CreateTableBuilder;
-            const e = (
-              k[columnType] as (name: string) => Knex.Knex.ColumnBuilder
-            )(column.name);
+            const columnType = column.type as keyof Knex.Knex.CreateTableBuilder;
+            const e = (k[columnType] as (name: string) => Knex.Knex.ColumnBuilder)(column.name);
             if (column.unique) e.unique();
           }
         });
       }
 
       if (["better-sqlite3", "sqlite3"].includes(connClient)) {
-        const result = await this.client.raw<{ name: string }[]>(
-          `PRAGMA table_info(${table.name});`
-        );
-        for (const column of result)
-          existingColumns.push({ name: column.name });
+        const result = await this.client.raw<{ name: string }[]>(`PRAGMA table_info(${table.name});`);
+        for (const column of result) existingColumns.push({ name: column.name });
       } else if (["mysql", "mysql2"].includes(connClient)) {
-        const result = await this.client.raw<{ Field: string }[][]>(
-          `SHOW columns from ${table.name}`
-        );
+        const result = await this.client.raw<{ Field: string }[][]>(`SHOW columns from ${table.name}`);
         if (result && result.length !== 0 && Array.isArray(result[0]))
-          for (const column of result[0])
-            existingColumns.push({ name: column.Field });
+          for (const column of result[0]) existingColumns.push({ name: column.Field });
 
         // console.log(existingColumns);
       }
@@ -68,15 +59,13 @@ export class DatabaseManager {
         for (const column of table.columns) {
           // const check = (await this.client.schema.hasColumn(table.name, column.name));
           // logger.debug(`Table ${table.name} column ${column.name} ${check}`);
-          const check = existingColumns.some((e) => e.name === column.name);
+          const check = existingColumns.some(e => e.name === column.name);
           // logger.debug(JSON.stringify(existingColumns.map(e=>e.name)));
           // logger.debug(`checking column ${column.name}, check: ${check}`);
           if (!check) {
             // logger.debug(`column: ${column.name} not in ${table.name}`);
-            await this.client.schema.table(table.name, (k) => {
-              const e = (
-                k[column.type] as (name: string) => Knex.Knex.AlterColumnBuilder
-              )(column.name);
+            await this.client.schema.table(table.name, k => {
+              const e = (k[column.type] as (name: string) => Knex.Knex.AlterColumnBuilder)(column.name);
               if (column.unique) e.unique();
             });
           }
@@ -85,11 +74,9 @@ export class DatabaseManager {
 
       // Iterate through the existing columns and delete any that aren't in the schema
       for (const column of existingColumns) {
-        if (!table.columns.some((c) => c.name === column.name)) {
-          logger.debug(
-            `Table ${table.name} column ${column.name} not in schema`
-          );
-          await this.client.schema.table(table.name, (k) => {
+        if (!table.columns.some(c => c.name === column.name)) {
+          logger.debug(`Table ${table.name} column ${column.name} not in schema`);
+          await this.client.schema.table(table.name, k => {
             k.dropColumn(column.name);
           });
         }
@@ -105,25 +92,16 @@ export class DatabaseManager {
   /** BEGIN MEDIA ENTRIES */
 
   public async getMediaEntryById(id: string) {
-    const entry = await this.client<DBMediaEntry>("media")
-      .select()
-      .where({ id })
-      .first();
+    const entry = await this.client<DBMediaEntry>("media").select().where({ id }).first();
     return entry;
   }
 
   public async getMediaEntryByUrl(url: string) {
-    const entry = await this.client<DBMediaEntry>("media")
-      .select()
-      .where({ url })
-      .first();
+    const entry = await this.client<DBMediaEntry>("media").select().where({ url }).first();
     return entry;
   }
 
-  public async getAllMediaEntries(
-    page?: number,
-    pageSize?: number
-  ): Promise<DBMediaEntry[]> {
+  public async getAllMediaEntries(page?: number, pageSize?: number): Promise<DBMediaEntry[]> {
     let query = this.client<DBMediaEntry>("media").select();
     if (page !== undefined && pageSize !== undefined) {
       query = query.offset((page - 1) * pageSize).limit(pageSize);
@@ -137,9 +115,8 @@ export class DatabaseManager {
       .select()
       .where("deleted", false)
       .andWhereRaw("(liveAt + (ttl * 1000)) <= (strftime('%s','now') * 1000)");
-
   }
-  
+
   // this shit below is kinda gay af and i need to find a better way to do it because why would you update by url.
 
   public async upsertMediaById(id: string, data: Partial<DBMediaEntry>) {
@@ -177,19 +154,14 @@ export class DatabaseManager {
   }): Promise<DBFloxyUser> {
     const now = Date.now();
 
-    const existingUser = await this.client<DBFloxyUser>("users")
-      .where({ username })
-      .orWhere({ email })
-      .first();
+    const existingUser = await this.client<DBFloxyUser>("users").where({ username }).orWhere({ email }).first();
 
     if (existingUser) {
-      await this.client<DBFloxyUser>("users")
-        .where({ id: existingUser.id })
-        .update({
-          passwordHash,
-          role,
-          updatedAt: now,
-        });
+      await this.client<DBFloxyUser>("users").where({ id: existingUser.id }).update({
+        passwordHash,
+        role,
+        updatedAt: now,
+      });
 
       return (await this.getUserById(existingUser.id))!;
     } else {
@@ -223,7 +195,7 @@ export class DatabaseManager {
       passwordHash: string;
       email: string;
       role: FloxyUserRole;
-    }>
+    }>,
   ): Promise<DBFloxyUser> {
     const now = Date.now();
 
@@ -248,9 +220,7 @@ export class DatabaseManager {
   }
 
   public async getUserByUsername(username: string) {
-    const user = await this.client<DBFloxyUser>("users")
-      .where({ username })
-      .first();
+    const user = await this.client<DBFloxyUser>("users").where({ username }).first();
     return user || null;
   }
 
@@ -270,12 +240,7 @@ export class DatabaseManager {
 
   /** END USERS */
 
-  public async createLogEntry(
-    action: string,
-    userId: string,
-    message: string,
-    details: Record<string, unknown>
-  ) {
+  public async createLogEntry(action: string, userId: string, message: string, details: Record<string, unknown>) {
     const id = crypto.randomUUID();
     const timestamp = Date.now();
 

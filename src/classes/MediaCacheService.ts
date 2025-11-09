@@ -55,7 +55,7 @@ export default class MediaCacheService {
       };
       // Notes to store about this particular cache, will be stored to the cache_log, not directly to the cache, so we have consistency
       extra?: Record<string, string>;
-    }
+    },
   ) {
     // no dont do this probably especially if its different encoding data??? i dunno
     const existing = await this.getByUrl(url);
@@ -66,37 +66,23 @@ export default class MediaCacheService {
     }
     if (!profile) profile = Media.getProfile("AUDIO");
 
-    if (
-      options.reencode?.bitrate &&
-      !Media.validateProfileBitrate(
-        options.reencode.profile || "AUDIO",
-        options.reencode.bitrate
-      )
-    ) {
-      throw new Media.MediaBitrateOutOfRangeError(
-        options.reencode.profile || "AUDIO",
-        options.reencode.bitrate
-      );
+    if (options.reencode?.bitrate && !Media.validateProfileBitrate(options.reencode.profile || "AUDIO", options.reencode.bitrate)) {
+      throw new Media.MediaBitrateOutOfRangeError(options.reencode.profile || "AUDIO", options.reencode.bitrate);
     }
 
     if (existing) {
       const fileState = await existing.getFileState();
 
       if (fileState & MediaEntryFileState.MISSING) {
-        logger.info(
-          `Media files for ${existing.id} are missing. Resetting status to PENDING.`
-        );
+        logger.info(`Media files for ${existing.id} are missing. Resetting status to PENDING.`);
         existing.status = MediaQueueStatus.PENDING;
         existing.updatedAt = Date.now();
         void existing.writeToDb();
       } else if (
         options.reencode &&
-        (existing.reencode.profile !== options.reencode.profile ||
-          existing.reencode.bitrate !== options.reencode.bitrate)
+        (existing.reencode.profile !== options.reencode.profile || existing.reencode.bitrate !== options.reencode.bitrate)
       ) {
-        logger.info(
-          `Reencode parameters for ${existing.id} differ. Adding forcerencode flag.`
-        );
+        logger.info(`Reencode parameters for ${existing.id} differ. Adding forcerencode flag.`);
         existing.reencode = {
           ...existing.reencode,
           profile: options.reencode.profile as keyof typeof Media.PROFILES,
@@ -108,19 +94,10 @@ export default class MediaCacheService {
         existing.updatedAt = Date.now();
         void existing.writeToDb();
       } else if (existing.deleted) {
-        logger.info(
-          `Media cache entry ${existing.id} was marked as deleted. Restoring.`
-        );
-        await fsp
-          .rename(
-            existing.deletedPath,
-            existing.cachedPath
-          )
-          .catch((err) => {
-            logger.error(
-              `Failed to rename media cache entry ${existing.id}: ${err}`
-            );
-          });
+        logger.info(`Media cache entry ${existing.id} was marked as deleted. Restoring.`);
+        await fsp.rename(existing.deletedPath, existing.cachedPath).catch(err => {
+          logger.error(`Failed to rename media cache entry ${existing.id}: ${err}`);
+        });
         existing.deleted = false;
         existing.updatedAt = Date.now();
         existing.liveAt = Date.now();
@@ -156,16 +133,12 @@ export default class MediaCacheService {
 
   private processQueue = async () => {
     const processingCount = Array.from(this.cache.values()).filter(
-      (e) =>
-        e.status === MediaQueueStatus.DOWNLOADING ||
-        e.status === MediaQueueStatus.METADATA
+      e => e.status === MediaQueueStatus.DOWNLOADING || e.status === MediaQueueStatus.METADATA,
     ).length;
 
     if (processingCount >= this.maxConcurrentProcesses) return;
 
-    const pendingEntries = Array.from(this.cache.values()).filter(
-      (e) => e.status === MediaQueueStatus.PENDING
-    );
+    const pendingEntries = Array.from(this.cache.values()).filter(e => e.status === MediaQueueStatus.PENDING);
 
     for (const entry of pendingEntries) {
       if (processingCount >= this.maxConcurrentProcesses) break;
@@ -184,27 +157,15 @@ export default class MediaCacheService {
       logger.debug("Checking for expired media cache entries...");
       const expiredEntries = await this.floxy.database.getExpiredMediaEntries();
       for (const dbEntry of expiredEntries) {
-        logger.info(
-          `Marking media cache entry ${dbEntry.id} as deleted (expired)`
-        );
+        logger.info(`Marking media cache entry ${dbEntry.id} as deleted (expired)`);
 
         await fsp
           .rename(
-            path.join(
-              this.cacheFolder,
-              dbEntry.id,
-              `output.${dbEntry.extension}`
-            ),
-            path.join(
-              this.cacheFolder,
-              dbEntry.id,
-              `output_deleted_${config.DELETION_SECRET}.${dbEntry.extension}`
-            )
+            path.join(this.cacheFolder, dbEntry.id, `output.${dbEntry.extension}`),
+            path.join(this.cacheFolder, dbEntry.id, `output_deleted_${config.DELETION_SECRET}.${dbEntry.extension}`),
           )
-          .catch((err) => {
-            logger.error(
-              `Failed to rename media cache entry ${dbEntry.id}: ${err}`
-            );
+          .catch(err => {
+            logger.error(`Failed to rename media cache entry ${dbEntry.id}: ${err}`);
           });
 
         await this.floxy.database.upsertMediaById(dbEntry.id, {
@@ -225,12 +186,9 @@ export default class MediaCacheService {
     void entry.writeToDb();
 
     try {
-      logger.info(
-        `Processing media cache entry ${entry.id} for URL ${entry.url}`,
-        {
-          reencode: entry.reencode,
-        }
-      );
+      logger.info(`Processing media cache entry ${entry.id} for URL ${entry.url}`, {
+        reencode: entry.reencode,
+      });
 
       const folderPath = path.join(this.cacheFolder, entry.id);
 
@@ -243,10 +201,7 @@ export default class MediaCacheService {
         // TODO: make this its own function for entries, like entry.getDeletedPath() or something
         const fileState = await entry.getFileState();
 
-        if (
-          fileState & MediaEntryFileState.AVAILABLE &&
-          fileState & MediaEntryFileState.DELETED
-        ) {
+        if (fileState & MediaEntryFileState.AVAILABLE && fileState & MediaEntryFileState.DELETED) {
           // the fuck??...
           await fsp.unlink(entry.cachedPath);
         }
@@ -257,27 +212,20 @@ export default class MediaCacheService {
         }
 
         if (fileState & MediaEntryFileState.AVAILABLE && !entry.forcerencode) {
-          logger.info(
-            `Media cache entry ${entry.id} already exists on disk, skipping download.`
-          );
+          logger.info(`Media cache entry ${entry.id} already exists on disk, skipping download.`);
           entry.status = MediaQueueStatus.COMPLETED;
           return;
         }
 
         if (entry.forcerencode) {
-          logger.info(
-            `Media cache entry ${entry.id} has force reencode flag set, proceeding with reencoding.`
-          );
-          await fsp.unlink(entry.cachedPath).catch((err) => {
-            logger.warn(
-              `Failed to delete existing file for force reencode of ${entry.id}: ${err}`
-            );
+          logger.info(`Media cache entry ${entry.id} has force reencode flag set, proceeding with reencoding.`);
+          await fsp.unlink(entry.cachedPath).catch(err => {
+            logger.warn(`Failed to delete existing file for force reencode of ${entry.id}: ${err}`);
           });
         }
       }
 
-      const profile =
-        Media.getProfile(entry.reencode.profile) || Media.getProfile("AUDIO");
+      const profile = Media.getProfile(entry.reencode.profile) || Media.getProfile("AUDIO");
 
       // yt-dlp and ffmpeg processing would go here
       const opts = buildYtDlpOptions(entry, profile, path.join(this.cacheFolder, entry.id));
@@ -287,24 +235,18 @@ export default class MediaCacheService {
         abortOnError: false,
         progress: true,
         ffmpegLocation: this.floxy.config.ffmpegPath,
-        onProgress: (p) => {
+        onProgress: p => {
           entry.progress = p;
         },
         cookies: this.floxy.config.ytdlpCookiesPath,
         ...opts,
-
       });
-      await fsp.writeFile(
-        path.join(this.cacheFolder, entry.id, "log.txt"),
-        result
-      );
+      await fsp.writeFile(path.join(this.cacheFolder, entry.id, "log.txt"), result);
 
       entry.status = MediaQueueStatus.METADATA;
 
       // set metadata
-      const metadata = (await this.floxy.metadataParser.parseUrl(
-        entry.url
-      )) as MediaMetadata;
+      const metadata = (await this.floxy.metadataParser.parseUrl(entry.url)) as MediaMetadata;
       entry.metadata = metadata;
 
       // on success
@@ -331,23 +273,23 @@ export default class MediaCacheService {
     this.cacheCounts = {
       PENDING: this.cache
         .values()
-        .filter((e) => e.status === MediaQueueStatus.PENDING)
+        .filter(e => e.status === MediaQueueStatus.PENDING)
         .toArray().length,
       DOWNLOADING: this.cache
         .values()
-        .filter((e) => e.status === MediaQueueStatus.DOWNLOADING)
+        .filter(e => e.status === MediaQueueStatus.DOWNLOADING)
         .toArray().length,
       METADATA: this.cache
         .values()
-        .filter((e) => e.status === MediaQueueStatus.METADATA)
+        .filter(e => e.status === MediaQueueStatus.METADATA)
         .toArray().length,
       COMPLETED: this.cache
         .values()
-        .filter((e) => e.status === MediaQueueStatus.COMPLETED)
+        .filter(e => e.status === MediaQueueStatus.COMPLETED)
         .toArray().length,
       FAILED: this.cache
         .values()
-        .filter((e) => e.status === MediaQueueStatus.FAILED)
+        .filter(e => e.status === MediaQueueStatus.FAILED)
         .toArray().length,
     };
     return this.cacheCounts;
@@ -356,7 +298,7 @@ export default class MediaCacheService {
   // Public functions
 
   public async getByUrl(url: string) {
-    const inCache = this.cache.values().find((e) => e.url === url);
+    const inCache = this.cache.values().find(e => e.url === url);
     if (!inCache) {
       const foundEntry = await this.floxy.database.getMediaEntryByUrl(url);
       if (foundEntry) {
@@ -383,14 +325,8 @@ export default class MediaCacheService {
     return inCache;
   }
 
-  public async getAll(
-    page?: number,
-    limit?: number
-  ): Promise<MediaCacheEntry[]> {
-    const dbEntries = await this.floxy.database.getAllMediaEntries(
-      page,
-      limit
-    );
+  public async getAll(page?: number, limit?: number): Promise<MediaCacheEntry[]> {
+    const dbEntries = await this.floxy.database.getAllMediaEntries(page, limit);
     const entries: MediaCacheEntry[] = [];
     for (const dbEntry of dbEntries) {
       let entry = this.cache.get(dbEntry.id);
@@ -421,12 +357,12 @@ export default class MediaCacheService {
     //   await fsp.rename(entry.cachedPath, entry.deletedPath).catch((err) => {
     //     logger.error(`Failed to rename media cache entry ${entry.id}: ${err}`);
     //   });
-    
+
     // }
     switch (hard) {
       // @ts-expect-error fallthrough
       // biome-ignore lint/suspicious/noFallthroughSwitchClause: Intentional fallthrough
-            case "file":
+      case "file":
         logger.debug(`Hard deleting media cache entry ${entry.id} from disk.`);
         await fsp.rm(path.join(this.cacheFolder, entry.id), {
           recursive: true,
@@ -444,7 +380,7 @@ export default class MediaCacheService {
         break;
 
       default:
-        await fsp.rename(entry.cachedPath, entry.deletedPath).catch((err) => {
+        await fsp.rename(entry.cachedPath, entry.deletedPath).catch(err => {
           logger.error(`Failed to rename media cache entry ${entry.id}: ${err}`);
         });
         break;
@@ -454,7 +390,7 @@ export default class MediaCacheService {
     void this.floxy.database.upsertMediaById(entry.id, {
       deleted: true,
     });
-    
+
     return true;
   }
 
@@ -524,7 +460,7 @@ class MediaCacheEntry {
         profile?: keyof typeof Media.PROFILES;
         bitrate?: number;
       };
-    }
+    },
   ) {
     this.floxy = floxy;
     this.cacheService = cacheService;
@@ -577,10 +513,9 @@ class MediaCacheEntry {
   }
 
   async getFileState(): Promise<MediaEntryFileState> {
-    
     const outputPath = this.cachedPath;
     const deletedPath = this.deletedPath;
-    
+
     const outputExists = await statExists(outputPath);
     const deletedExists = await statExists(deletedPath);
 
@@ -598,25 +533,16 @@ class MediaCacheEntry {
   }
 
   get deletedPath() {
-    return path.join(
-      this.cacheService.cacheFolder,
-      this.id,
-      `output_deleted_${config.DELETION_SECRET}.${this.extension}`
-    );
+    return path.join(this.cacheService.cacheFolder, this.id, `output_deleted_${config.DELETION_SECRET}.${this.extension}`);
   }
 
   get cachedPath() {
-    return path.join(
-      this.cacheService.cacheFolder,
-      this.id,
-      `output.${this.extension}`
-    );
+    return path.join(this.cacheService.cacheFolder, this.id, `output.${this.extension}`);
   }
 
   get directoryPath() {
     return path.join(this.cacheService.cacheFolder, this.id);
   }
-
 
   toJSON() {
     return {
@@ -662,33 +588,36 @@ function buildYtDlpOptions(entry: MediaCacheEntry, profile: Media.EncodingProfil
 
   const isVideo = profile.type === "video";
 
-  const format = isVideo
-    ? "bestvideo+bestaudio/best"
-    : "bestaudio/best";
+  const format = isVideo ? "bestvideo+bestaudio/best" : "bestaudio/best";
 
   const ffArgs = [];
 
   if (profile.type === "video") {
     ffArgs.push(
-      "-c:v", Media.VIDEO_CODEC_MAP[profile.codec as keyof typeof Media.VIDEO_CODEC_MAP],
-      "-crf", Media.VIDEO_CRF_DEFAULT[profile.codec as keyof typeof Media.VIDEO_CRF_DEFAULT] || "22",
-      "-c:a", "aac"
+      "-c:v",
+      Media.VIDEO_CODEC_MAP[profile.codec as keyof typeof Media.VIDEO_CODEC_MAP],
+      "-crf",
+      Media.VIDEO_CRF_DEFAULT[profile.codec as keyof typeof Media.VIDEO_CRF_DEFAULT] || "22",
+      "-c:a",
+      "aac",
     );
   } else if (profile.type === "audio") {
-      ffArgs.push("-vn"); 
+    ffArgs.push("-vn");
 
-      if (profile.codec === "flac") {
-        // lossless: no bitrate
-        ffArgs.push("-c:a", "flac");
-      } else {
-        // biome-ignore lint/style/noNonNullAssertion: lossy profiles always have audio_bitrate
-        const bitrate = entry.reencode.bitrate || profile.audio_bitrate!.default;
-        ffArgs.push(
-          "-c:a", Media.AUDIO_CODEC_MAP[profile.codec as keyof typeof Media.AUDIO_CODEC_MAP],
-          "-b:a", `${Math.floor(bitrate / 1000)}k`
-        );
-      }
+    if (profile.codec === "flac") {
+      // lossless: no bitrate
+      ffArgs.push("-c:a", "flac");
+    } else {
+      // biome-ignore lint/style/noNonNullAssertion: lossy profiles always have audio_bitrate
+      const bitrate = entry.reencode.bitrate || profile.audio_bitrate!.default;
+      ffArgs.push(
+        "-c:a",
+        Media.AUDIO_CODEC_MAP[profile.codec as keyof typeof Media.AUDIO_CODEC_MAP],
+        "-b:a",
+        `${Math.floor(bitrate / 1000)}k`,
+      );
     }
+  }
 
   return {
     format,

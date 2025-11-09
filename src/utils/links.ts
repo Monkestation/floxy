@@ -16,11 +16,7 @@ export enum MediaType {
   Unknown = "Unknown",
 }
 
-export type IsMultipleMediaType<T extends MediaType> = T extends
-  | MediaType.Album
-  | MediaType.EP
-  | MediaType.Playlist
-  | MediaType.Compilation
+export type IsMultipleMediaType<T extends MediaType> = T extends MediaType.Album | MediaType.EP | MediaType.Playlist | MediaType.Compilation
   ? true
   : false;
 
@@ -76,8 +72,7 @@ export class MediaLink {
       if (hostname.includes("soundcloud.com")) {
         const segments = pathname.split("/").filter(Boolean);
         if (segments.length === 2) type = MediaType.Track;
-        if (segments.length > 2 && segments[2] === "sets")
-          type = MediaType.Playlist;
+        if (segments.length > 2 && segments[2] === "sets") type = MediaType.Playlist;
         return {
           service: MediaService.SoundCloud,
           type: type || MediaType.Unknown,
@@ -116,7 +111,7 @@ export class MediaLink {
             const videoId = u.searchParams.get("v");
             u.search = videoId ? `v=${videoId}` : "";
           } else {
-            u.search = ""; 
+            u.search = "";
           }
           break;
 
@@ -131,11 +126,9 @@ export class MediaLink {
 
         case "spotify.com":
         case "music.apple.com":
-          ["utm_source", "utm_medium", "utm_campaign", "app", "ls"].forEach(
-            (p) => {
-              u.searchParams.delete(p);
-            }
-          );
+          ["utm_source", "utm_medium", "utm_campaign", "app", "ls"].forEach(p => {
+            u.searchParams.delete(p);
+          });
           break;
 
         default:

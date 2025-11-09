@@ -24,7 +24,7 @@ export function BooleanLike(val: string | undefined): boolean {
       return Boolean(parseInt(val, 10));
     } else {
       // what the fuck am i doing
-      return (/^true|false|y(?:es)?|no?|1|0/i).test(val)
+      return /^true|false|y(?:es)?|no?|1|0/i.test(val);
     }
   } else {
     return Boolean(val);

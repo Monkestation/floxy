@@ -8,14 +8,9 @@ export class YtdlpMetadataParser {
   constructor(private floxy: Floxy) {}
 
   async parseUrl(url: string): Promise<MediaMetadata | MediaMetadata[]> {
-    const raw = this.parseYtdlpJson(
-      await this.floxy.ytdlp.execAsync(url, { dumpJson: true })
-    );
+    const raw = this.parseYtdlpJson(await this.floxy.ytdlp.execAsync(url, { dumpJson: true }));
 
-    if (
-      (raw._type === "playlist" || Array.isArray(raw.entries)) &&
-      raw.entries?.length
-    ) {
+    if ((raw._type === "playlist" || Array.isArray(raw.entries)) && raw.entries?.length) {
       return raw.entries.map((entry: any) => this.normalizeEntry(entry));
     }
 
@@ -26,20 +21,13 @@ export class YtdlpMetadataParser {
     const title = raw.title || "Unknown Title";
     const artist = raw.artist || raw.uploader || null;
 
-    const cleanTitle = this.stripArtistPrefix(
-      raw.title || raw.track || "Unknown Title",
-      artist
-    );
+    const cleanTitle = this.stripArtistPrefix(raw.title || raw.track || "Unknown Title", artist);
     console.log(cleanTitle, title, artist);
 
     let albumArtist: string[] | null = null;
 
     if (Array.isArray(raw.album_artist)) {
-      albumArtist = [
-        ...new Set(
-          (raw.album_artist as string[]).map((a) => a.trim()).filter(Boolean)
-        ),
-      ];
+      albumArtist = [...new Set((raw.album_artist as string[]).map(a => a.trim()).filter(Boolean))];
     } else if (typeof raw.album_artist === "string") {
       albumArtist = raw.album_artist
         .split(",")
@@ -62,10 +50,7 @@ export class YtdlpMetadataParser {
   }
 
   // normalize title and track: remove "Artist - " prefix
-  private stripArtistPrefix(
-    val: string | null,
-    artist: string | null
-  ): string | null {
+  private stripArtistPrefix(val: string | null, artist: string | null): string | null {
     if (!val || !artist) return val;
 
     const prefix = `${artist} - `;
@@ -92,9 +77,9 @@ export class YtdlpMetadataParser {
       // maybe multiple JSON lines??
       const lines = raw
         .split("\n")
-        .map((l) => l.trim())
+        .map(l => l.trim())
         .filter(Boolean)
-        .map((l) => {
+        .map(l => {
           try {
             return JSON.parse(l);
           } catch {

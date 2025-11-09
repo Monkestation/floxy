@@ -21,7 +21,7 @@ export default class Floxy {
   ytdlp!: YtDlp;
   mediaCacheService: MediaCacheService;
   database: DatabaseManager;
-  metadataParser: YtdlpMetadataParser
+  metadataParser: YtdlpMetadataParser;
   config: {
     adminPassword: string;
     webserverHost: string;
@@ -116,9 +116,7 @@ export default class Floxy {
 
   private setupFastifyLogging() {
     this.fastify.setNotFoundHandler((request, reply) => {
-      this.fastify.logger.debug(
-        `IP: ${request.ip} - ${request.method} - Route not found: ${request.url}`
-      );
+      this.fastify.logger.debug(`IP: ${request.ip} - ${request.method} - Route not found: ${request.url}`);
 
       reply.status(404).send({ message: "Not found" });
     });
@@ -149,9 +147,7 @@ export default class Floxy {
         passwordHash: await bcrypt.hash(this.config.adminPassword, 12),
         role: FloxyUserRole.ADMIN,
       });
-      logger.info(
-        `Created default admin user with username: ${newAdmin.username} and password: ${this.config.adminPassword}`
-      );
+      logger.info(`Created default admin user with username: ${newAdmin.username} and password: ${this.config.adminPassword}`);
     }
   }
 
@@ -166,35 +162,25 @@ export default class Floxy {
       });
 
       if (!ytDlpPath) {
-        logger.warn(
-          "yt-dlp binary not found in PATH. Please set YTDLP_PATH in config."
-        );
+        logger.warn("yt-dlp binary not found in PATH. Please set YTDLP_PATH in config.");
         return;
       }
       const version = execFileSync(ytDlpPath, ["--version"]).toString().trim();
       logger.info(`Found yt-dlp binary at ${ytDlpPath}, version ${version}`);
 
       // check if version is older than 2 months
-      const [year, month, day, _hour_minute_second] = version
-        .split(".")
-        .map((v) => parseInt(v, 10)) as [number, number, number, number];
+      const [year, month, day, _hour_minute_second] = version.split(".").map(v => parseInt(v, 10)) as [number, number, number, number];
       const releaseDate = new Date();
       releaseDate.setFullYear(year, month, day);
       const now = new Date();
-      const twoMonthsAgo = new Date(
-        now.getFullYear(),
-        now.getMonth() - 2,
-        now.getDate()
-      );
+      const twoMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 2, now.getDate());
       if (releaseDate < twoMonthsAgo) {
-        logger.warn(
-          `yt-dlp version ${version} may be out of date. Consider updating to the latest version for best compatibility.`
-        );
+        logger.warn(`yt-dlp version ${version} may be out of date. Consider updating to the latest version for best compatibility.`);
       }
       this.config.ytdlpPath = ytDlpPath;
     } catch (_error) {
       logger.warn(
-        "A yt-dlp binary was found in path but we couldn't parse the version. Please update yt-dlp, or set YTDLP_PATH in config."
+        "A yt-dlp binary was found in path but we couldn't parse the version. Please update yt-dlp, or set YTDLP_PATH in config.",
       );
       logger.debug(_error);
     }
@@ -209,21 +195,11 @@ export default class Floxy {
       });
 
       if (!ffmpegPath) {
-        logger.warn(
-          "ffmpeg binary not found in PATH. Please set FFMPEG_PATH in config."
-        );
+        logger.warn("ffmpeg binary not found in PATH. Please set FFMPEG_PATH in config.");
         return;
       }
-      const outputStringFirstLine = (
-        execFileSync(ffmpegPath, ["-version"])
-          .toString()
-          .trim()
-          .split(/\n/) as [string]
-      )[0];
-      const [_, version] =
-        /ffmpeg version ((n?[\d.]+)-?(\d+)?\+?([\w]+))?/.exec(
-          outputStringFirstLine
-        ) as unknown as [string, string];
+      const outputStringFirstLine = (execFileSync(ffmpegPath, ["-version"]).toString().trim().split(/\n/) as [string])[0];
+      const [_, version] = /ffmpeg version ((n?[\d.]+)-?(\d+)?\+?([\w]+))?/.exec(outputStringFirstLine) as unknown as [string, string];
       if (!version) {
         throw new Error(`Version was null. Parsed: ${outputStringFirstLine}`);
       }
@@ -231,7 +207,7 @@ export default class Floxy {
       this.config.ffmpegPath = ffmpegPath;
     } catch (_error) {
       logger.warn(
-        `An FFmpeg binary was found in PATH (${ffmpegPath}) but we couldn't parse the version. Please update FFmpeg, or set FFMPEG_PATH in config.`
+        `An FFmpeg binary was found in PATH (${ffmpegPath}) but we couldn't parse the version. Please update FFmpeg, or set FFMPEG_PATH in config.`,
       );
       logger.debug(_error);
     }

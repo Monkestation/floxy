@@ -1,6 +1,7 @@
 /** biome-ignore-all lint/complexity/useLiteralKeys: i dont wannya!! */
 export function validateMimeType(mimeType: string): boolean {
-  const mimeTypePattern = /(?<type>\w+)\/(?<subtype>[\w.-]+)(?:\+(?<suffix>[\w.-]+))*(?:\s*;\s*(?<key>[^=]+?)(?:=""?(?<value>[\S.-]+?)""?)?)*$/;
+  const mimeTypePattern =
+    /(?<type>\w+)\/(?<subtype>[\w.-]+)(?:\+(?<suffix>[\w.-]+))*(?:\s*;\s*(?<key>[^=]+?)(?:=""?(?<value>[\S.-]+?)""?)?)*$/;
   return mimeTypePattern.test(mimeType);
 }
 export function decodeMimeTypeWithParams(mimeType: string): { type: string; params: Record<string, string> } | undefined {
@@ -9,10 +10,10 @@ export function decodeMimeTypeWithParams(mimeType: string): { type: string; para
   }
   const [type, ...paramPairs] = mimeType?.split(";") || [];
 
-  if (!type) { 
+  if (!type) {
     return undefined;
   }
-  
+
   const params: Record<string, string> = {};
 
   for (const pair of paramPairs) {
@@ -27,33 +28,33 @@ export function decodeMimeTypeWithParams(mimeType: string): { type: string; para
 
 export const mimeTypeMap = {
   // Audio
-  mp3: 'audio/mpeg',
-  wav: 'audio/wav',
-  ogg: 'audio/ogg',
-  m4a: 'audio/mp4',
-  aac: 'audio/aac',
-  flac: 'audio/flac',
-  wma: 'audio/x-ms-wma',
-  opus: 'audio/opus',
-  mid: 'audio/midi',
-  midi: 'audio/midi',
-  amr: 'audio/amr',
-  aiff: 'audio/aiff',
+  mp3: "audio/mpeg",
+  wav: "audio/wav",
+  ogg: "audio/ogg",
+  m4a: "audio/mp4",
+  aac: "audio/aac",
+  flac: "audio/flac",
+  wma: "audio/x-ms-wma",
+  opus: "audio/opus",
+  mid: "audio/midi",
+  midi: "audio/midi",
+  amr: "audio/amr",
+  aiff: "audio/aiff",
 
   // Video
-  mp4: 'video/mp4',
-  webm: 'video/webm',
-  ogv: 'video/ogg',
-  avi: 'video/x-msvideo',
-  mov: 'video/quicktime',
-  wmv: 'video/x-ms-wmv',
-  flv: 'video/x-flv',
-  mkv: 'video/x-matroska',
-  mpeg: 'video/mpeg',
-  mpg: 'video/mpeg',
-  m4v: 'video/x-m4v',
-  "3gp": 'video/3gpp',
-  "3g2": 'video/3gpp2',
+  mp4: "video/mp4",
+  webm: "video/webm",
+  ogv: "video/ogg",
+  avi: "video/x-msvideo",
+  mov: "video/quicktime",
+  wmv: "video/x-ms-wmv",
+  flv: "video/x-flv",
+  mkv: "video/x-matroska",
+  mpeg: "video/mpeg",
+  mpg: "video/mpeg",
+  m4v: "video/x-m4v",
+  "3gp": "video/3gpp",
+  "3g2": "video/3gpp2",
 };
 
 export interface BitrateRange {
@@ -64,7 +65,7 @@ export interface BitrateRange {
 
 export interface EncodingProfile {
   format: string; // container (mp4, ogg, etc)
-  codec: (keyof typeof AUDIO_CODEC_MAP | keyof typeof VIDEO_CODEC_MAP); // h264, opus,
+  codec: keyof typeof AUDIO_CODEC_MAP | keyof typeof VIDEO_CODEC_MAP; // h264, opus,
   type: "video" | "audio";
   audio_bitrate?: BitrateRange;
   // extra?: Record<string, any>;
@@ -146,21 +147,16 @@ export const VIDEO_CRF_DEFAULT = {
   av1: 32,
 };
 
+export type AUDIO_PROFILE_FORMATS = (typeof AUDIO_PROFILES)[keyof typeof AUDIO_PROFILES]["format"];
 
-
-
-export type AUDIO_PROFILE_FORMATS =
-  (typeof AUDIO_PROFILES)[keyof typeof AUDIO_PROFILES]["format"];
-
-export type VIDEO_PROFILE_FORMATS =
-  (typeof VIDEO_PROFILES)[keyof typeof VIDEO_PROFILES]["format"];
+export type VIDEO_PROFILE_FORMATS = (typeof VIDEO_PROFILES)[keyof typeof VIDEO_PROFILES]["format"];
 
 export const PROFILES = {
   ...VIDEO_PROFILES,
   ...AUDIO_PROFILES,
 } as const;
 
-export function getProfile(id?: "AUDIO" | "VIDEO" | string): EncodingProfile
+export function getProfile(id?: "AUDIO" | "VIDEO" | string): EncodingProfile;
 export function getProfile(id?: "AUDIO" | "VIDEO" | keyof typeof PROFILES | string): EncodingProfile | undefined {
   if (id === "AUDIO") {
     return AUDIO_PROFILES["mp3"];
@@ -230,17 +226,10 @@ export class MediaProfileError extends Error {
   constructor(profile: string) {
     super(`Profile ${profile} is not a valid profile.`);
   }
-
 }
 export class MediaBitrateOutOfRangeError extends Error {
   constructor(profile: string, bitrate: number) {
-    const {
-      audio_bitrate: {
-        min: minBitrate,
-        max: maxBitrate
-      } = { min: 0, max: 0 }
-    } = getProfile(profile);
+    const { audio_bitrate: { min: minBitrate, max: maxBitrate } = { min: 0, max: 0 } } = getProfile(profile);
     super(`Bitrate ${bitrate} is not a valid bitrate for profile '${profile}' (Min: ${minBitrate} Max: ${maxBitrate}).`);
   }
-
 }

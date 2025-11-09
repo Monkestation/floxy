@@ -6,7 +6,7 @@ interface Table {
 
 type ConvertTable<T> = Omit<T, "_tableName">;
 
-interface _DBFloxyUser extends Table{
+interface _DBFloxyUser extends Table {
   _tableName: "users";
   id: string;
   username: string;
@@ -17,7 +17,7 @@ interface _DBFloxyUser extends Table{
   updatedAt: number;
 }
 
-type DBFloxyUser = ConvertTable<_DBFloxyUser>
+type DBFloxyUser = ConvertTable<_DBFloxyUser>;
 
 interface _DBMediaEntry extends Table {
   _tableName: "media";
@@ -31,10 +31,10 @@ interface _DBMediaEntry extends Table {
   updatedAt: number;
   liveAt?: number;
   deleted: boolean;
-  ttl: number; 
+  ttl: number;
 }
 
-type DBMediaEntry = ConvertTable<_DBMediaEntry>
+type DBMediaEntry = ConvertTable<_DBMediaEntry>;
 
 interface _DBActionLogEntry extends Table {
   _tableName: "logs";
@@ -47,4 +47,3 @@ interface _DBActionLogEntry extends Table {
 }
 
 type DBActionLogEntry = ConvertTable<_DBActionLogEntry>;
-

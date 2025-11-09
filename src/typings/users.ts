@@ -1,6 +1,6 @@
 export enum FloxyUserRole {
   ADMIN = "admin",
-  USER = "user"
+  USER = "user",
 }
 
-export type FloxyJWTPayload = Pick<DBFloxyUser, "id" | "username" | "email" | "createdAt">
+export type FloxyJWTPayload = Pick<DBFloxyUser, "id" | "username" | "email" | "createdAt">;
