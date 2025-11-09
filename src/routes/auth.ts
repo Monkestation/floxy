@@ -42,7 +42,7 @@ export default (floxy: Floxy) =>
           username: user.username,
           role: user.role,
         })
-          .setProtectedHeader({ alg: "EdDSA" })
+          .setProtectedHeader({ alg: "HS256" })
           .setIssuedAt()
           .setExpirationTime("8h")
           .sign(new TextEncoder().encode(config.JWT_SECRET));
@@ -87,7 +87,7 @@ export default (floxy: Floxy) =>
           username: user.username,
           role: user.role,
         })
-          .setProtectedHeader({ alg: "EdDSA" })
+          .setProtectedHeader({ alg: "HS256" })
           .setIssuedAt()
           .setExpirationTime(`${hours}h`)
           .sign(new TextEncoder().encode(config.JWT_SECRET));
