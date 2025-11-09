@@ -5,21 +5,22 @@ meta {
 }
 
 post {
-  url: http://127.0.0.1:3050/api/media/queue?url={{url}}&reencode={{reencode}}
+  url: http://127.0.0.1:3050/api/media/queue?url={{url}}&profile={{profile}}
   body: none
   auth: inherit
 }
 
 params:query {
   url: {{url}}
-  reencode: {{reencode}}
+  profile: {{profile}}
   ~ttl: {{ttl}}
 }
 
 vars:pre-request {
   url: https://www.youtube.com/watch?v=E_2ZckRiUKY
-  ttl: 3600
-  reencode: audio/ogg;codec=opus;bitrate=128000
+  profile: ogg-opus
+  bitrate: 128000
+  ~ttl: 3600
 }
 
 script:post-response {

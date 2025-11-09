@@ -103,7 +103,26 @@ export default class MediaCacheService {
           bitrate: options.reencode.bitrate,
         };
         existing.forcerencode = true;
+        existing.status = MediaQueueStatus.PENDING;
         existing.updatedAt = Date.now();
+        void existing.writeToDb();
+      } else if (existing.deleted) {
+        logger.info(
+          `Media cache entry ${existing.id} was marked as deleted. Restoring.`
+        );
+        await fsp
+          .rename(
+            existing.deletedPath,
+            existing.cachedPath
+          )
+          .catch((err) => {
+            logger.error(
+              `Failed to rename media cache entry ${existing.id}: ${err}`
+            );
+          });
+        existing.deleted = false;
+        existing.updatedAt = Date.now();
+        existing.liveAt = Date.now();
         void existing.writeToDb();
       }
 
@@ -398,20 +417,58 @@ export default class MediaCacheService {
     return entries;
   }
 
-  async deleteById(id: string) {
+  async deleteById(id: string, hard?: "file" | "entry", force?: boolean) {
     const entry = await this.getById(id);
 
     if (!entry) return;
 
-    if (entry.deleted) return;
+    if (entry.deleted && !(force ?? false)) return;
 
-    await fsp.rename(entry.cachedPath, entry.deletedPath).catch((err) => {
-      logger.error(`Failed to rename media cache entry ${entry.id}: ${err}`);
-    });
+    // delete from disk
+    // if (hard) {
+    //   logger.debug(`Hard deleting media cache entry ${entry.id} from disk.`);
+    //   await fsp.rm(path.join(this.cacheFolder, entry.id), {
+    //     recursive: true,
+    //     force: true,
+    //   });
+    // } else {
+    //   await fsp.rename(entry.cachedPath, entry.deletedPath).catch((err) => {
+    //     logger.error(`Failed to rename media cache entry ${entry.id}: ${err}`);
+    //   });
+    
+    // }
+    switch (hard) {
+      // @ts-expect-error fallthrough
+      // biome-ignore lint/suspicious/noFallthroughSwitchClause: Intentional fallthrough
+            case "file":
+        logger.debug(`Hard deleting media cache entry ${entry.id} from disk.`);
+        await fsp.rm(path.join(this.cacheFolder, entry.id), {
+          recursive: true,
+          force: true,
+        });
+      // fallthrough
+
+      case "entry":
+        if (hard === "entry") {
+          logger.debug(`Hard deleting media cache entry ${entry.id} from disk and database.`);
+          await this.floxy.database.deleteMediaById(entry.id);
+          this.cache.delete(entry.id);
+          return true;
+        }
+        break;
+
+      default:
+        await fsp.rename(entry.cachedPath, entry.deletedPath).catch((err) => {
+          logger.error(`Failed to rename media cache entry ${entry.id}: ${err}`);
+        });
+        break;
+    }
+
     entry.deleted = true;
     void this.floxy.database.upsertMediaById(entry.id, {
       deleted: true,
     });
+    
     return true;
   }
 
@@ -583,6 +640,7 @@ class MediaCacheEntry {
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,
       liveAt: this.liveAt,
+      deleted: this.deleted,
       ttl: this.ttl,
       status: this.status,
       reencode: this.reencode,

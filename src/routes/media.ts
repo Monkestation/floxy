@@ -7,6 +7,7 @@ import type Floxy from "../classes/Floxy.js";
 import config from "../config.js";
 import { authMiddleware } from "../middleware/auth.js";
 import { MediaLink } from "../utils/links.js";
+import logger from "../utils/logger.js";
 
 export default (floxy: Floxy) => fastifyPlugin((fastify, _opts) => {
   // fastify get all media with paginatoin
@@ -149,11 +150,28 @@ export default (floxy: Floxy) => fastifyPlugin((fastify, _opts) => {
   });
 
   fastify.delete<{
-    Params: {
-      id: string;
+    Params: { id: string },
+    Querystring: {
+      hard?: "file" | "entry";
+      force?: boolean;
     }
   }>("/api/media/:id", {
     preValidation: [authMiddleware],
+    schema: {
+      querystring: {
+        type: "object",
+        properties: {
+          hard: {
+            type: "string",
+            enum: ["file", "entry"],
+          },
+          force: {
+            type: "boolean",
+            default: false,
+          },
+        },
+      } as const satisfies JSONSchema,
+    },
   }, async (req, res) => {
     const { id } = req.params;
     
@@ -170,15 +188,17 @@ export default (floxy: Floxy) => fastifyPlugin((fastify, _opts) => {
       });
     }
 
-    if (entry.deleted) {
-      return res.status(204).send({
+    if (entry.deleted && !(req.query.force ?? false)) {
+      return res.status(200).send({
         message: "Entry is already deleted",
       });
     }
-    
 
-    await floxy.mediaCacheService.deleteById(id);
+    logger.debug(`Deleting media entry ${id}, hard: ${req.query.hard}, force: ${req.query.force ?? false}`);
+
+    void floxy.mediaCacheService.deleteById(id, req.query.hard, req.query.force ?? false);
     return res.status(204).send();
+
   });
 
 });

@@ -136,7 +136,8 @@ export class DatabaseManager {
     return this.client<DBMediaEntry>("media")
       .select()
       .where("deleted", false)
-      .andWhereRaw("(liveAt + ttl) <= strftime('%s','now')");
+      .andWhereRaw("(liveAt + (ttl * 1000)) <= (strftime('%s','now') * 1000)");
+
   }
   
   // this shit below is kinda gay af and i need to find a better way to do it because why would you update by url.
@@ -240,6 +241,10 @@ export class DatabaseManager {
     const updatedUser = await this.getUserById(id);
     if (!updatedUser) throw new Error(`User not found after update: ${id}`);
     return updatedUser;
+  }
+
+  public async deleteMediaById(id: string) {
+    await this.client<DBMediaEntry>("media").where({ id }).delete();
   }
 
   public async getUserByUsername(username: string) {

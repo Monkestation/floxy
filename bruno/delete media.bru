@@ -5,9 +5,14 @@ meta {
 }
 
 delete {
-  url: http://127.0.0.1:3050/api/media/:id
+  url: http://127.0.0.1:3050/api/media/:id?hard=entry&force=true
   body: none
   auth: inherit
+}
+
+params:query {
+  hard: entry
+  force: true
 }
 
 params:path {
@@ -17,4 +22,9 @@ params:path {
 settings {
   encodeUrl: true
   timeout: 0
+}
+
+docs {
+  hard: "file" or "entry"
+  force: ignore if an entry is already deleted.
 }

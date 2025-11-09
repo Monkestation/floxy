@@ -6,7 +6,8 @@
   - query params:
     - url: required, string, link to media to attempt to download.
     - ttl: optional, number (seconds), time this media should be available on the cache for, defaults to config/env setting
-    - reencode: optional, string, must be one of the supported profiles, provided at /api
+    - profile: optional, string, must be one of the supported profiles, provided at /api
+		- bitrate: optional, number, profile is required if this is specified. 
     - extra: optional, JSON string, notes to store about this particular cache. example: ckey info, player info,
 `POST /api/ytdlp |/api/ytdlp/:id` - Given a url, will fetch and return the raw JSON from yt-dlp's -J param
   At least of the following is required.
