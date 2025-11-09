@@ -138,7 +138,7 @@ export default (floxy: Floxy) => fastifyPlugin((fastify, _opts) => {
     }
 
     const endpoints = config.EXTERNAL_CACHE_ENDPOINTS.map((e) =>
-      path.join(e, entry.id, `output.${entry.extention}`)
+      new URL(path.posix.join("/media", entry.id), e).toString()
     );
     return {
       ...entry.toJSON(),
