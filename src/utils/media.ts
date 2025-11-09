@@ -64,7 +64,7 @@ export interface BitrateRange {
 
 export interface EncodingProfile {
   format: string; // container (mp4, ogg, etc)
-  codec: string; // h264, opus,
+  codec: (keyof typeof AUDIO_CODEC_MAP | keyof typeof VIDEO_CODEC_MAP); // h264, opus,
   type: "video" | "audio";
   audio_bitrate?: BitrateRange;
   // extra?: Record<string, any>;
@@ -100,13 +100,19 @@ export const AUDIO_PROFILES = {
     type: "audio",
     audio_bitrate: { min: 64_000, max: 320_000, default: 192_000 },
   } as const,
+  "ogg-vorbis": {
+    format: "ogg",
+    codec: "vorbis",
+    type: "audio",
+    audio_bitrate: { min: 48_000, max: 256_000, default: 128_000 },
+  } as const,
   "ogg-opus": {
     format: "ogg",
     codec: "opus",
     type: "audio",
-    audio_bitrate: { min: 48_000, max: 256_000, default: 128_000 },
+    audio_bitrate: { min: 6_000, max: 510_000, default: 128_000 },
   } as const,
-  "aac-m4a": {
+  "m4a-aac": {
     format: "m4a",
     codec: "aac",
     type: "audio",
@@ -116,9 +122,32 @@ export const AUDIO_PROFILES = {
     format: "flac",
     codec: "flac",
     type: "audio",
-    audio_bitrate: { min: 500_000, max: 1_500_000, default: 1_000_000 },
   } as const,
-} ;
+};
+
+export const AUDIO_CODEC_MAP = {
+  mp3: "libmp3lame",
+  vorbis: "libvorbis",
+  aac: "aac",
+  flac: "flac",
+};
+
+export const VIDEO_CODEC_MAP = {
+  h264: "libx264",
+  hevc: "libx265",
+  vp9: "libvpx-vp9",
+  av1: "libaom-av1",
+};
+
+export const VIDEO_CRF_DEFAULT = {
+  h264: 22,
+  hevc: 26,
+  vp9: 30,
+  av1: 32,
+};
+
+
+
 
 export type AUDIO_PROFILE_FORMATS =
   (typeof AUDIO_PROFILES)[keyof typeof AUDIO_PROFILES]["format"];

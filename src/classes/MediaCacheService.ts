@@ -102,6 +102,7 @@ export default class MediaCacheService {
           profile: options.reencode.profile as keyof typeof Media.PROFILES,
           bitrate: options.reencode.bitrate,
         };
+        existing.extension = profile.format;
         existing.forcerencode = true;
         existing.status = MediaQueueStatus.PENDING;
         existing.updatedAt = Date.now();
@@ -279,34 +280,18 @@ export default class MediaCacheService {
         Media.getProfile(entry.reencode.profile) || Media.getProfile("AUDIO");
 
       // yt-dlp and ffmpeg processing would go here
+      const opts = buildYtDlpOptions(entry, profile, path.join(this.cacheFolder, entry.id));
       const result = await this.floxy.ytdlp.downloadAsync(entry.url, {
-        format:
-          profile.type === "video"
-            ? {
-                type: profile.format as Media.VIDEO_PROFILE_FORMATS,
-                filter: "mergevideo",
-                quality: 2,
-              }
-            : {
-                type: profile.format as Media.AUDIO_PROFILE_FORMATS,
-                filter: "audioonly",
-                quality: (entry.reencode.bitrate ||
-                  profile.audio_bitrate?.default) as 0,
-              },
-
-        output: path.join(
-          this.floxy.config.cacheFolder,
-          entry.id,
-          `output.${profile.format}`
-        ),
         debugPrintCommandLine: true,
         noAbortOnError: true,
         abortOnError: false,
-        embedMetadata: true,
         progress: true,
+        ffmpegLocation: this.floxy.config.ffmpegPath,
         onProgress: (p) => {
           entry.progress = p;
         },
+        ...opts,
+
       });
       await fsp.writeFile(
         path.join(this.cacheFolder, entry.id, "log.txt"),
@@ -333,7 +318,7 @@ export default class MediaCacheService {
         error: _error,
         reference: errorReference,
       });
-      // console.log(_error);
+      console.log(_error);
       entry.status = MediaQueueStatus.FAILED;
       entry.updatedAt = Date.now();
       entry.status = `An error occurred during processing. Reference ID: ${errorReference}`;
@@ -491,7 +476,7 @@ class MediaCacheEntry {
   cacheService: MediaCacheService;
   id: string;
   url: string;
-  extention: string;
+  extension: string;
   metadata?: MediaMetadata;
   createdAt: number;
   updatedAt: number;
@@ -544,7 +529,7 @@ class MediaCacheEntry {
     this.cacheService = cacheService;
     this.id = id;
     this.url = url;
-    this.extention = extension;
+    this.extension = extension;
     this.createdAt = createdAt;
     this.updatedAt = updatedAt || createdAt;
     this.liveAt = liveAt;
@@ -575,7 +560,7 @@ class MediaCacheEntry {
     await this.floxy.database.upsertMediaById(this.id, {
       url: this.url,
       metadata: JSON.stringify(this.metadata),
-      extension: this.extention,
+      extension: this.extension,
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,
       ttl: this.ttl,
@@ -615,7 +600,7 @@ class MediaCacheEntry {
     return path.join(
       this.cacheService.cacheFolder,
       this.id,
-      `output_deleted_${config.DELETION_SECRET}.${this.extention}`
+      `output_deleted_${config.DELETION_SECRET}.${this.extension}`
     );
   }
 
@@ -623,7 +608,7 @@ class MediaCacheEntry {
     return path.join(
       this.cacheService.cacheFolder,
       this.id,
-      `output.${this.extention}`
+      `output.${this.extension}`
     );
   }
 
@@ -636,7 +621,7 @@ class MediaCacheEntry {
     return {
       id: this.id,
       url: this.url,
-      extension: this.extention,
+      extension: this.extension,
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,
       liveAt: this.liveAt,
@@ -669,4 +654,46 @@ export enum MediaEntryFileState {
   DELETED = 1 << 1,
   // Neither the output file nor the deleted file is present on disk
   MISSING = 1 << 2,
+}
+
+function buildYtDlpOptions(entry: MediaCacheEntry, profile: Media.EncodingProfile, folderPath: string) {
+  const output = path.join(folderPath, `output.${profile.format}`);
+
+  const isVideo = profile.type === "video";
+
+  const format = isVideo
+    ? "bestvideo+bestaudio/best"
+    : "bestaudio/best";
+
+  const ffArgs = [];
+
+  if (profile.type === "video") {
+    ffArgs.push(
+      "-c:v", Media.VIDEO_CODEC_MAP[profile.codec as keyof typeof Media.VIDEO_CODEC_MAP],
+      "-crf", Media.VIDEO_CRF_DEFAULT[profile.codec as keyof typeof Media.VIDEO_CRF_DEFAULT] || "22",
+      "-c:a", "aac"
+    );
+  } else if (profile.type === "audio") {
+      ffArgs.push("-vn"); 
+
+      if (profile.codec === "flac") {
+        // lossless: no bitrate
+        ffArgs.push("-c:a", "flac");
+      } else {
+        // biome-ignore lint/style/noNonNullAssertion: lossy profiles always have audio_bitrate
+        const bitrate = entry.reencode.bitrate || profile.audio_bitrate!.default;
+        ffArgs.push(
+          "-c:a", Media.AUDIO_CODEC_MAP[profile.codec as keyof typeof Media.AUDIO_CODEC_MAP],
+          "-b:a", `${Math.floor(bitrate / 1000)}k`
+        );
+      }
+    }
+
+  return {
+    format,
+    output,
+    embedMetadata: true,
+    // because postprocessorArgs is fucked
+    extra: ffArgs,
+  };
 }

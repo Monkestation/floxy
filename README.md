@@ -17,6 +17,7 @@ note things
 - [ ] normalize API responses, i am getting tired of deciding between error or message or error AND message for errors n shit
 - [ ] figure out a better way to specify quality while also keeping track of what the file extension will be.
 - [ ] support tracklists maybe? (albums/playlists/EPs/etc) far into the future.
+- [ ] Periodically fix any entries in the database that are marked as pending but not in the current cache.
 
 # Buhbuh
 
