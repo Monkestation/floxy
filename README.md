@@ -32,7 +32,7 @@ www.example.com {
     reverse_proxy localhost:3050/api/{uri}
   }
 
-  handle_path /cache/* {
+  handle_path /media/* {
     root * /opt/floxy/cache
     file_server
   }
