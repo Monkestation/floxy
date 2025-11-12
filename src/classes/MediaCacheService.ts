@@ -132,7 +132,7 @@ export default class MediaCacheService {
   }
 
   private processQueue = async () => {
-    void this.calculateCounts();
+    this.calculateCounts();
 
     const processingCount = Array.from(this.cache.values()).filter(
       e => e.status === MediaQueueStatus.DOWNLOADING || e.status === MediaQueueStatus.METADATA,
@@ -264,12 +264,12 @@ export default class MediaCacheService {
       console.log(_error);
       entry.status = MediaQueueStatus.FAILED;
       entry.updatedAt = Date.now();
-      entry.status = `An error occurred during processing. Reference ID: ${errorReference}`;
+      entry.error = `An error occurred during processing. Reference ID: ${errorReference}`;
       void entry.writeToDb();
     }
   }
 
-  private async calculateCounts() {
+  private calculateCounts() {
     this.cacheCounts = {
       PENDING: this.cache
         .values()
@@ -291,8 +291,11 @@ export default class MediaCacheService {
         .values()
         .filter(e => e.status === MediaQueueStatus.FAILED)
         .toArray().length,
+      UNKNOWN: this.cache
+        .values()
+        .filter(e => Object.values(MediaQueueStatus).includes(e.status as MediaQueueStatus) === false)
+        .toArray().length,
     };
-    return this.cacheCounts;
   }
 
   // Public functions
@@ -418,9 +421,10 @@ class MediaCacheEntry {
   createdAt: number;
   updatedAt: number;
   liveAt?: number;
-  deleted: boolean;
+  deleted: boolean = false;
   ttl: number;
   status: MediaQueueStatus | string;
+  error: string | null = null;
   progress?: VideoProgress;
   // TODO: add extra to the database??? or make extra a part of the log entries?
   // biome-ignore lint/suspicious/noExplicitAny: User can specify any extras that are valid within JSON spec.
@@ -444,6 +448,7 @@ class MediaCacheEntry {
       metadata,
       deleted = false,
       status = MediaQueueStatus.PENDING,
+      error,
       reencode = {},
     }: {
       id: string;
@@ -456,6 +461,7 @@ class MediaCacheEntry {
       deleted?: boolean;
       ttl: number;
       status?: MediaQueueStatus;
+      error?: string | null;
       reencode?: {
         profile?: keyof typeof Media.PROFILES;
         bitrate?: number;
@@ -473,6 +479,7 @@ class MediaCacheEntry {
     this.ttl = ttl;
     this.metadata = metadata;
     this.deleted = deleted;
+    this.error = error || null;
     this.status = status;
     this.reencode = reencode;
   }
@@ -488,6 +495,7 @@ class MediaCacheEntry {
       liveAt: dbEntry.liveAt || undefined,
       ttl: dbEntry.ttl,
       deleted: !!dbEntry.deleted,
+      error: dbEntry.error,
       status: dbEntry.status as MediaQueueStatus,
       reencode: JSON.parse(dbEntry.reencode || "{}"),
     });
@@ -502,6 +510,7 @@ class MediaCacheEntry {
       updatedAt: this.updatedAt,
       ttl: this.ttl,
       deleted: this.deleted,
+      error: this.error,
       status: this.status,
       reencode: JSON.stringify(this.reencode),
       liveAt: this.liveAt,
@@ -553,6 +562,7 @@ class MediaCacheEntry {
       updatedAt: this.updatedAt,
       liveAt: this.liveAt,
       deleted: this.deleted,
+      error: this.error,
       ttl: this.ttl,
       status: this.status,
       reencode: this.reencode,
@@ -572,6 +582,7 @@ export enum MediaQueueStatus {
   METADATA = "metadata",
   COMPLETED = "completed",
   FAILED = "failed",
+  UNKNOWN = "unknown",
 }
 
 export enum MediaEntryFileState {

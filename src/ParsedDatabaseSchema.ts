@@ -18,6 +18,7 @@ export const Schema = [
       { name: "url", type: "text" },
       { name: "extension", type: "text" },
       { name: "status", type: "text" },
+      { name: "error", type: "text" },
       { name: "metadata", type: "text" },
       { name: "reencode", type: "text" },
       { name: "createdAt", type: "integer" },

@@ -7,8 +7,8 @@ import * as Media from "../utils/media.js";
 
 export default (floxy: Floxy) =>
   fastifyPlugin(async (fastify, __opts) => {
-    fastify.get("/api", async (_req, _res) => {
-      return {
+    fastify.get("/api", (_req, _res) => (
+      {
         status: "OK",
         version: packageData.version,
         cache_stats: floxy.mediaCacheService.getFriendlyStats(),
@@ -17,8 +17,8 @@ export default (floxy: Floxy) =>
           ...config.EXTERNAL_CACHE_ENDPOINTS,
         },
         media_profiles: Media.PROFILES,
-      };
-    });
+      }
+    ));
     for (const route of ["/api/ytdlp", "/api/ytdlp/:id"]) {
       fastify.get<{
         Querystring?: { url?: string };

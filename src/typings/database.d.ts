@@ -25,6 +25,8 @@ interface _DBMediaEntry extends Table {
   url: string;
   extension: string;
   status: MediaQueueStatus;
+  // Error for the last failure, if any
+  error: string | null;
   metadata: string; // JSON stringified
   reencode: string | null; // JSON stringified
   createdAt: number;
