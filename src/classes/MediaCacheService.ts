@@ -132,6 +132,8 @@ export default class MediaCacheService {
   }
 
   private processQueue = async () => {
+    void this.calculateCounts();
+
     const processingCount = Array.from(this.cache.values()).filter(
       e => e.status === MediaQueueStatus.DOWNLOADING || e.status === MediaQueueStatus.METADATA,
     ).length;
@@ -176,8 +178,6 @@ export default class MediaCacheService {
         if (cached) cached.deleted = true;
       }
     }
-
-    void this.calculateCounts();
   };
 
   private async processEntry(entry: MediaCacheEntry) {
