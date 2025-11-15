@@ -23,6 +23,7 @@ const config = {
   /// paths
   FFMPEG_PATH: process.env.FFMPEG_PATH,
   YTDLP_PATH: process.env.YTDLP_PATH,
+  YTDLP_EXTRA_ARGS: process.env.YTDLP_EXTRA_ARGS,
   DATABASE_FILE: path.resolve(process.env.DATABASE_FILE || path.join(process.cwd(), "floxy.sqlite")),
   LOGS_PATH: process.env.LOGS_PATH ?? path.join(process.cwd(), "logs"),
 };

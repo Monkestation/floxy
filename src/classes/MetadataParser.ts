@@ -8,7 +8,13 @@ export class YtdlpMetadataParser {
   constructor(private floxy: Floxy) {}
 
   async parseUrl(url: string): Promise<MediaMetadata | MediaMetadata[]> {
-    const raw = this.parseYtdlpJson(await this.floxy.ytdlp.execAsync(url, { dumpJson: true }));
+    const raw = this.parseYtdlpJson(
+      await this.floxy.ytdlp.execAsync(url, {
+        dumpJson: true,
+        noDownload: true,
+        additionalOptions: this.floxy.config.ytdlpExtraArgs ? this.floxy.config.ytdlpExtraArgs.split(" ") : [],
+      }),
+    );
 
     if ((raw._type === "playlist" || Array.isArray(raw.entries)) && raw.entries?.length) {
       return raw.entries.map((entry: any) => this.normalizeEntry(entry));
@@ -22,7 +28,6 @@ export class YtdlpMetadataParser {
     const artist = raw.artist || raw.uploader || null;
 
     const cleanTitle = this.stripArtistPrefix(raw.title || raw.track || "Unknown Title", artist);
-    console.log(cleanTitle, title, artist);
 
     let albumArtist: string[] | null = null;
 

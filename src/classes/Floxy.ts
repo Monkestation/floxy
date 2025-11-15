@@ -29,6 +29,7 @@ export default class Floxy {
     ffmpegPath?: string;
     ytdlpPath?: string;
     ytdlpCookiesPath?: string;
+    ytdlpExtraArgs?: string;
     cacheFolder: string;
     databaseFilePath: string;
   };
@@ -40,6 +41,7 @@ export default class Floxy {
     ytdlpPath,
     ffmpegPath,
     ytdlpCookiesPath,
+    ytdlpExtraArgs,
     databaseFilePath,
     adminPassword,
   }: {
@@ -49,6 +51,7 @@ export default class Floxy {
     ytdlpPath?: string;
     ffmpegPath?: string;
     ytdlpCookiesPath?: string;
+    ytdlpExtraArgs?: string;
     databaseFilePath: string;
     adminPassword: string;
   }) {
@@ -59,6 +62,7 @@ export default class Floxy {
       ffmpegPath,
       ytdlpPath,
       ytdlpCookiesPath,
+      ytdlpExtraArgs,
       databaseFilePath,
       adminPassword: adminPassword,
     };

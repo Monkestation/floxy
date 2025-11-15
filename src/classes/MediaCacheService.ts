@@ -239,6 +239,7 @@ export default class MediaCacheService {
           entry.progress = p;
         },
         cookies: this.floxy.config.ytdlpCookiesPath,
+        additionalOptions: this.floxy.config.ytdlpExtraArgs ? this.floxy.config.ytdlpExtraArgs.split(" ") : [],
         ...opts,
       });
       await fsp.writeFile(path.join(this.cacheFolder, entry.id, "log.txt"), result);
@@ -261,7 +262,6 @@ export default class MediaCacheService {
         error: _error,
         reference: errorReference,
       });
-      console.log(_error);
       entry.status = MediaQueueStatus.FAILED;
       entry.updatedAt = Date.now();
       entry.error = `An error occurred during processing. Reference ID: ${errorReference}`;

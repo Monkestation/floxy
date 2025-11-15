@@ -38,7 +38,6 @@ function formatObject(obj: Table[]) {
 
 export default async function parseSchema() {
   const pathToDBSchema = path.join(path.dirname(fileURLToPath(import.meta.url)), "../typings/database.d.ts");
-  console.log(pathToDBSchema);
   const parsedCode = parser.parse((await fsp.readFile(pathToDBSchema)).toString("utf8"), {
     ecmaVersion: "latest",
   });
