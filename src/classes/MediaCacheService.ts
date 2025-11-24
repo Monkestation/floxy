@@ -1,13 +1,14 @@
 import { randomUUID } from "node:crypto";
 import { promises as fsp } from "node:fs";
 import path from "node:path";
-import type { VideoProgress } from "ytdlp-nodejs";
+import type { ArgsOptions, VideoFormat, VideoProgress } from "ytdlp-nodejs";
 import config from "../config.js";
 import { dirExists, statExists } from "../utils/fs.js";
 import logger from "../utils/logger.js";
 import * as Media from "../utils/media.js";
 import type Floxy from "./Floxy.js";
 import type { MediaMetadata } from "./MetadataParser.js";
+import { inspect } from "node:util";
 
 /**
 What this does:
@@ -77,6 +78,8 @@ export default class MediaCacheService {
         logger.info(`Media files for ${existing.id} are missing. Resetting status to PENDING.`);
         existing.status = MediaQueueStatus.PENDING;
         existing.updatedAt = Date.now();
+        existing.error = null;
+        existing.progress = undefined;
         void existing.writeToDb();
       } else if (
         options.reencode &&
@@ -229,6 +232,7 @@ export default class MediaCacheService {
 
       // yt-dlp and ffmpeg processing would go here
       const opts = buildYtDlpOptions(entry, profile, path.join(this.cacheFolder, entry.id));
+      logger.debug(`Built yt-dlp options for ${entry.id} - ${inspect(opts)}`);
       const result = await this.floxy.ytdlp.downloadAsync(entry.url, {
         debugPrintCommandLine: true,
         noAbortOnError: true,
@@ -262,6 +266,7 @@ export default class MediaCacheService {
         error: _error,
         reference: errorReference,
       });
+      console.error(`Error reference: ${errorReference}`, _error);
       entry.status = MediaQueueStatus.FAILED;
       entry.updatedAt = Date.now();
       entry.error = `An error occurred during processing. Reference ID: ${errorReference}`;
@@ -635,6 +640,8 @@ function buildYtDlpOptions(entry: MediaCacheEntry, profile: Media.EncodingProfil
     output,
     embedMetadata: true,
     // because postprocessorArgs is fucked
-    extra: ffArgs,
-  };
+    postprocessorArgs: {
+      FFmpegAudio: ffArgs
+    }
+  } as ArgsOptions;
 }

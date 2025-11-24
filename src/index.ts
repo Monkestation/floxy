@@ -1,7 +1,6 @@
 import Floxy from "./classes/Floxy.js";
 import config, { ConfigurationError } from "./config.js";
 import logger from "./utils/logger.js";
-
 if (!config.JWT_SECRET || config.JWT_SECRET === "supersecretkey") {
   throw new ConfigurationError("Invalid JWT_SECRET: it is required and cannot be 'supersecretkey'.");
 }

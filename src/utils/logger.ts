@@ -34,7 +34,7 @@ const transportLogLevel = config.DEBUG ? "debug" : "info";
 transports.push(
   new winston.transports.File({
     filename: logPath,
-    format: winston.format.combine(winston.format.timestamp(), winston.format.json()),
+    format: winston.format.combine(winston.format.timestamp(), winston.format.errors({ stack: true }), winston.format.json()),
     level: transportLogLevel,
     handleExceptions: true,
   }),
