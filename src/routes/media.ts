@@ -74,6 +74,9 @@ export default (floxy: Floxy) =>
               bitrate: {
                 type: "number",
               },
+              dontCleanTitle: {
+                type: "boolean",
+              },
               extra: {
                 type: "string",
               },
@@ -118,6 +121,7 @@ export default (floxy: Floxy) =>
               }
             : undefined,
           extra,
+          dontCleanTitle: req.query.dontCleanTitle,
           ttl: req.query.ttl,
         });
         return entry;

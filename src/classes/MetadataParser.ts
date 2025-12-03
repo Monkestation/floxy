@@ -8,7 +8,7 @@ import type Floxy from "./Floxy.js";
 export class YtdlpMetadataParser {
   constructor(private floxy: Floxy) {}
 
-  async parseUrl(url: string): Promise<MediaMetadata | MediaMetadata[]> {
+  async parseUrl(url: string, dontCleanTitle = false): Promise<MediaMetadata | MediaMetadata[]> {
     const raw = this.parseYtdlpJson(
       await this.floxy.ytdlp.execAsync(url, {
         dumpJson: true,
@@ -17,11 +17,15 @@ export class YtdlpMetadataParser {
       }),
     );
 
-    if ((raw._type === "playlist" || Array.isArray(raw.entries)) && raw.entries?.length) {
-      return raw.entries.map((entry: any) => this.normalizeEntry(entry));
+    if (!raw) {
+      throw new Error("No data returned from yt-dlp");
     }
 
-    return this.normalizeEntry(raw);
+    if ((raw._type === "playlist" || Array.isArray(raw.entries)) && raw.entries?.length) {
+      return raw.entries.map((entry: any) => this.normalizeEntry(entry, dontCleanTitle));
+    }
+
+    return this.normalizeEntry(raw, dontCleanTitle);
   }
 
   private detectArtistFromTitle(title: string): string | null {
@@ -42,7 +46,7 @@ export class YtdlpMetadataParser {
     return null;
   }
 
-  private normalizeEntry(raw: any): MediaMetadata {
+  private normalizeEntry(raw: any, dontCleanTitle = false): MediaMetadata {
     const title = raw.title || "Unknown Title";
     let artist: string | null = null;
     let albumArtist: string[] | null = null;
@@ -80,7 +84,7 @@ export class YtdlpMetadataParser {
       albumArtist = [artist];
     }
 
-    const cleanTitle = this.stripArtistPrefix(raw.title || raw.track || "Unknown Title", artist);
+    const cleanTitle = dontCleanTitle ? title : this.stripArtistPrefix(raw.title || raw.track || "Unknown Title", artist);
 
     return {
       title: cleanTitle ?? title,

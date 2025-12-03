@@ -8,6 +8,7 @@
     - ttl: optional, number (seconds), time this media should be available on the cache for, defaults to config/env setting
     - profile: optional, string, must be one of the supported profiles, provided at /api
 		- bitrate: optional, number, profile is required if this is specified. 
+		- dontcleantitle: optional, boolean, whether or not to clean metadata tiles of garbage (typically youll want this if you're downloading music)
     - extra: optional, JSON string, notes to store about this particular cache. example: ckey info, player info,
 `POST /api/ytdlp |/api/ytdlp/:id` - Given a url, will fetch and return the raw JSON from yt-dlp's -J param
   At least of the following is required.

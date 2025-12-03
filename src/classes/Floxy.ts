@@ -94,7 +94,7 @@ export default class Floxy {
     this.ytdlp = YtDlp.create({
       binaryPath: this.config.ytdlpPath,
       ffmpegPath: this.config.ffmpegPath,
-    });
+    }) as YtDlp;
 
     logger.debug("Setting up Fastify decorations");
     this.fastify.decorate("ytdlp", this.ytdlp);

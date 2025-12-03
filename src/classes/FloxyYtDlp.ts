@@ -16,4 +16,51 @@ export class YtDlp extends YtDlpOriginal {
 
     return obj;
   }
+
+  // Will return an error code with a message based on the yt-dlp error.
+  static normalizeError(rawErrorMessage: string): {
+    status: number;
+    code: string;
+    message?: string;
+    error?: string;
+  } {
+    const _rawErrorMessage = rawErrorMessage.toLowerCase();
+
+    if (_rawErrorMessage.includes("youtube:truncated_id"))
+      return {
+        status: 400,
+        code: "INVALID_ID",
+        message: "The provided YouTube URL has an complete id (Looks truncated).",
+      };
+    else if (_rawErrorMessage.includes("youtube:truncated_url"))
+      return {
+        status: 400,
+        code: "INVALID_URL",
+        message: "The provided YouTube URL is invalid.",
+      };
+    else if (_rawErrorMessage.includes("account has been terminated"))
+      return {
+        status: 404,
+        code: "VIDEO_TERMINATED",
+        message: "The video is no longer available because the source account has been terminated.",
+      };
+    else if (_rawErrorMessage.includes("sign in to confirm your age"))
+      return {
+        status: 403,
+        code: "ACCESS_DENIED_AGE_RESTRICTED",
+        message: "The requested content is restricted and requires authentication which Floxy is unable to provide at this time.",
+      };
+    else if (_rawErrorMessage.includes("private video"))
+      return {
+        status: 403,
+        code: "ACCESS_DENIED_PRIVATE_VIDEO",
+        message: "The requested video is private and cannot be accessed.",
+      };
+    else
+      return {
+        status: 500,
+        code: "UNKNOWN_YTDLP_ERROR",
+        error: rawErrorMessage,
+      };
+  }
 }

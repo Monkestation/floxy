@@ -4,6 +4,8 @@ import type Floxy from "../classes/Floxy.js";
 import config from "../config.js";
 import { authMiddleware } from "../middleware/auth.js";
 import * as Media from "../utils/media.js";
+import { YtDlp } from "../classes/FloxyYtDlp.js";
+import { error } from "console";
 
 export default (floxy: Floxy) =>
   fastifyPlugin(async (fastify, __opts) => {
@@ -21,7 +23,7 @@ export default (floxy: Floxy) =>
     ));
     for (const route of ["/api/ytdlp", "/api/ytdlp/:id"]) {
       fastify.get<{
-        Querystring?: { url?: string };
+        Querystring?: { url?: string; dontCleanTitle?: boolean };
         Params: { id?: string };
       }>(route, { preHandler: [authMiddleware] }, async (req, res) => {
         let url = req.query?.url;
@@ -41,13 +43,20 @@ export default (floxy: Floxy) =>
         }
 
         try {
-          const metadata = await floxy.metadataParser.parseUrl(url);
+          const metadata = await floxy.metadataParser.parseUrl(url, req.query?.dontCleanTitle ?? false);
           return res.send(metadata);
         } catch (err) {
-          return res.status(500).send({
-            message: "Failed to parse metadata",
-            error: (err as Error).message,
+          const e = YtDlp.normalizeError((err as Error).message);
+          return res.status(e.status).send({
+            code: e.code,
+            message: e.message,
+            error: e?.error
           });
+
+          // return res.status(500).send({
+          //   message: "Failed to parse metadata",
+          //   error: (err as Error).message,
+          // });
         }
       });
     }

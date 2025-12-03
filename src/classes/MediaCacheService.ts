@@ -54,6 +54,7 @@ export default class MediaCacheService {
         profile: string;
         bitrate?: number;
       };
+      dontCleanTitle?: boolean,
       // Notes to store about this particular cache, will be stored to the cache_log, not directly to the cache, so we have consistency
       extra?: Record<string, string>;
     },
