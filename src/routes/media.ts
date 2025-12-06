@@ -147,7 +147,13 @@ export default (floxy: Floxy) =>
         }
 
         const endpoints = config.EXTERNAL_CACHE_ENDPOINTS.map(e =>
-          new URL(path.posix.join(entry.id, `output.${entry.extension}`), e).toString(),
+          {
+            const cachePath = path.posix.join(entry.id, `output.${entry.extension}`);
+            if (!e.endsWith("/")) {
+              e += "/";
+            }
+            return `${e}${cachePath}`;
+          },
         );
         return {
           ...entry.toJSON(),
@@ -194,7 +200,7 @@ export default (floxy: Floxy) =>
           });
         }
 
-        if (!entry.IsCompleted()) {
+        if (!entry.IsDoneProcessing() && !(req.query.force ?? false)) {
           return res.status(400).send({
             error: "Cannot delete an entry that is still processing",
           });

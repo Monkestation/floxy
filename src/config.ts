@@ -14,7 +14,7 @@ const config = {
   SENTRY_DSN: process.env.SENTRY_DSN,
   CACHE_FOLDER: path.resolve(process.env.CACHE_FOLDER || path.join(process.cwd(), "cache")),
   /// Separated by commas
-  EXTERNAL_CACHE_ENDPOINTS: process.env.EXTERNAL_CACHE_ENDPOINTS?.split(",").filter(notEmpty) ?? [],
+  EXTERNAL_CACHE_ENDPOINTS: process.env.EXTERNAL_CACHE_ENDPOINTS?.split(",").filter(notEmpty).map(e=>e.trim()) ?? [],
   YTDLP_COOKIES_PATH: process.env.YTDLP_COOKIES_PATH
     ? await findFile("cookies.txt", [""])
     : await findFile("cookies.txt", [process.cwd(), path.join(import.meta.dirname, "..")]),

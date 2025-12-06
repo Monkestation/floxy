@@ -577,6 +577,10 @@ class MediaCacheEntry {
     };
   }
 
+  IsDoneProcessing() {
+    return this.status !== MediaQueueStatus.PENDING && this.status !== MediaQueueStatus.DOWNLOADING && this.status !== MediaQueueStatus.METADATA;
+  }
+
   IsCompleted() {
     return this.status === MediaQueueStatus.COMPLETED;
   }
