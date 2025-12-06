@@ -577,6 +577,25 @@ class MediaCacheEntry {
     };
   }
 
+  toFastifyJSON() {
+    
+    return {
+      ...this.toJSON(),
+      endpoints: this.getEndpoints(),
+    }
+  }
+
+  getEndpoints(): string[] {
+    return config.EXTERNAL_CACHE_ENDPOINTS.map(e =>
+      {
+        const cachePath = path.posix.join(this.id, `output.${this.extension}`);
+        if (!e.endsWith("/")) {
+          e += "/";
+        }
+        return `${e}${cachePath}`;
+      },
+    );
+  }
   IsDoneProcessing() {
     return this.status !== MediaQueueStatus.PENDING && this.status !== MediaQueueStatus.DOWNLOADING && this.status !== MediaQueueStatus.METADATA;
   }

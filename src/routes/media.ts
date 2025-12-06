@@ -124,7 +124,7 @@ export default (floxy: Floxy) =>
           dontCleanTitle: req.query.dontCleanTitle,
           ttl: req.query.ttl,
         });
-        return entry;
+        return entry.toFastifyJSON();
       },
     );
     fastify.get<{
@@ -146,21 +146,8 @@ export default (floxy: Floxy) =>
           });
         }
 
-        const endpoints = config.EXTERNAL_CACHE_ENDPOINTS.map(e =>
-          {
-            const cachePath = path.posix.join(entry.id, `output.${entry.extension}`);
-            if (!e.endsWith("/")) {
-              e += "/";
-            }
-            return `${e}${cachePath}`;
-          },
-        );
-        return {
-          ...entry.toJSON(),
-          endpoints: entry.IsCompleted() ? endpoints : null,
-        } as ReturnType<typeof entry.toJSON> & {
-          endpoints?: string[];
-        };
+        
+        return entry.toFastifyJSON();
       },
     );
 
