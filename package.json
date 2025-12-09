@@ -8,6 +8,7 @@
 		"build": "pnpm --package=typescript dlx tsc",
 		"dev": "cross-env tsx watch --ignore src/ParsedDatabaseSchema.ts src/index.ts",
 		"lint": "pnpm exec biome lint --write",
+		"start": "node dist/index.js",
 		"db:genschema": "cross-env node --no-warnings=ExperimentalWarning --loader ts-node/esm ./src/utils/dbSchemaParser.ts"
 	},
 	"keywords": [],
