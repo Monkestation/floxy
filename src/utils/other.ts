@@ -35,3 +35,29 @@ export function isValidEmail(email: string): boolean {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   return emailRegex.test(email);
 }
+
+/**
+ * Converts a Unix timestamp (milliseconds) or a Date object to a BYOND timestamp (deciseconds).
+ * The BYOND epoch is 00:00:00 GMT, January 1, 2000.
+ *
+ */
+function toByondTimestamp(date: Date | number) {
+  const BYOND_EPOCH_MS = Date.UTC(2000, 0, 1); // Date.UTC(year, monthIndex, day)
+
+  let inputTimeMS: number;
+
+  if (date instanceof Date) {
+    inputTimeMS = date.getTime();
+  } else if (typeof date === "number") {
+    inputTimeMS = date;
+  } else {
+    throw new Error("Invalid input: must be a Unix timestamp (number) or a Date object.");
+  }
+
+  const timeDifferenceMS = inputTimeMS - BYOND_EPOCH_MS;
+
+  const byondTimestampDS = timeDifferenceMS / 100;
+
+  return Math.floor(byondTimestampDS);
+}
+

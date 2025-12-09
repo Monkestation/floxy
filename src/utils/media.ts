@@ -131,6 +131,7 @@ export const AUDIO_CODEC_MAP = {
   vorbis: "libvorbis",
   aac: "aac",
   flac: "flac",
+  opus: "libopus",
 };
 
 export const VIDEO_CODEC_MAP = {

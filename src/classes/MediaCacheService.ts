@@ -111,6 +111,10 @@ export default class MediaCacheService {
       return existing;
     }
 
+    logger.debug(`Creating new media cache entry for URL: ${url}`, {
+      reencode: options.reencode,
+    });
+
     const entry = new MediaCacheEntry(this.floxy, this, {
       id: crypto.randomUUID(),
       url,
@@ -231,6 +235,12 @@ export default class MediaCacheService {
 
       const profile = Media.getProfile(entry.reencode.profile) || Media.getProfile("AUDIO");
 
+      void (async () => {
+        const metadata = (await this.floxy.metadataParser.parseUrl(entry.url)) as MediaMetadata;
+        entry.metadata = metadata;
+        logger.info(`Metadata for media cache entry ${entry.id} set.`);
+      })();
+
       // yt-dlp and ffmpeg processing would go here
       const opts = buildYtDlpOptions(entry, profile, path.join(this.cacheFolder, entry.id));
       logger.debug(`Built yt-dlp options for ${entry.id} - ${inspect(opts)}`);
@@ -247,13 +257,15 @@ export default class MediaCacheService {
         additionalOptions: this.floxy.config.ytdlpExtraArgs ? this.floxy.config.ytdlpExtraArgs.split(" ") : [],
         ...opts,
       });
-      await fsp.writeFile(path.join(this.cacheFolder, entry.id, "log.txt"), result);
+      void (async () => {
+        await fsp.writeFile(path.join(this.cacheFolder, entry.id, "log.txt"), result);
+      })();
+      logger.info(`yt-dlp processing for media cache entry ${entry.id} completed.`);
 
-      entry.status = MediaQueueStatus.METADATA;
+      // entry.status = MediaQueueStatus.METADATA;
 
       // set metadata
-      const metadata = (await this.floxy.metadataParser.parseUrl(entry.url)) as MediaMetadata;
-      entry.metadata = metadata;
+      
 
       // on success
       entry.status = MediaQueueStatus.COMPLETED;
@@ -261,6 +273,8 @@ export default class MediaCacheService {
       entry.updatedAt = Date.now();
       entry.liveAt = Date.now();
       void entry.writeToDb();
+      logger.info(`Media cache entry ${entry.id} completed successfully.`);
+      void this.calculateCounts();
     } catch (_error) {
       const errorReference = randomUUID();
       logger.error("Media cache failed", {
@@ -624,6 +638,10 @@ export enum MediaEntryFileState {
 }
 
 function buildYtDlpOptions(entry: MediaCacheEntry, profile: Media.EncodingProfile, folderPath: string) {
+  logger.debug(`Building yt-dlp options for media cache entry ${entry.id} with profile ${profile.name}`, {
+    folderPath,
+    profile,
+  });
   const output = path.join(folderPath, `output.${profile.format}`);
 
   const isVideo = profile.type === "video";
@@ -658,6 +676,8 @@ function buildYtDlpOptions(entry: MediaCacheEntry, profile: Media.EncodingProfil
       );
     }
   }
+  
+  logger.debug(`FFmpeg arguments for media cache entry ${entry.id}:`, { ffArgs });
 
   return {
     format,
