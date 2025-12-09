@@ -1,14 +1,14 @@
 import { randomUUID } from "node:crypto";
 import { promises as fsp } from "node:fs";
 import path from "node:path";
-import type { ArgsOptions, VideoFormat, VideoProgress } from "ytdlp-nodejs";
+import { inspect } from "node:util";
+import type { ArgsOptions, VideoProgress } from "ytdlp-nodejs";
 import config from "../config.js";
 import { dirExists, statExists } from "../utils/fs.js";
 import logger from "../utils/logger.js";
 import * as Media from "../utils/media.js";
 import type Floxy from "./Floxy.js";
 import type { MediaMetadata } from "./MetadataParser.js";
-import { inspect } from "node:util";
 
 /**
 What this does:
@@ -638,7 +638,7 @@ export enum MediaEntryFileState {
 }
 
 function buildYtDlpOptions(entry: MediaCacheEntry, profile: Media.EncodingProfile, folderPath: string) {
-  logger.debug(`Building yt-dlp options for media cache entry ${entry.id} with profile ${profile.name}`, {
+  logger.debug(`Building yt-dlp options for media cache entry ${entry.id} with profile ${profile.format}`, {
     folderPath,
     profile,
   });

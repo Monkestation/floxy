@@ -2,9 +2,7 @@
 import type { JsonSchemaToTsProvider } from "@fastify/type-provider-json-schema-to-ts";
 import fastifyPlugin from "fastify-plugin";
 import type { JSONSchema } from "json-schema-to-ts";
-import path from "node:path";
 import type Floxy from "../classes/Floxy.js";
-import config from "../config.js";
 import { authMiddleware } from "../middleware/auth.js";
 import { MediaLink } from "../utils/links.js";
 import logger from "../utils/logger.js";

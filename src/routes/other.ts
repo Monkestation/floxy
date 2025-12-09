@@ -1,11 +1,10 @@
 import fastifyPlugin from "fastify-plugin";
 import packageData from "../../package.json" with { type: "json" };
 import type Floxy from "../classes/Floxy.js";
+import { YtDlp } from "../classes/FloxyYtDlp.js";
 import config from "../config.js";
 import { authMiddleware } from "../middleware/auth.js";
 import * as Media from "../utils/media.js";
-import { YtDlp } from "../classes/FloxyYtDlp.js";
-import { error } from "console";
 
 export default (floxy: Floxy) =>
   fastifyPlugin(async (fastify, __opts) => {
