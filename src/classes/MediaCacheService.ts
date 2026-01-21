@@ -646,7 +646,7 @@ function buildYtDlpOptions(entry: MediaCacheEntry, profile: Media.EncodingProfil
 
   const isVideo = profile.type === "video";
 
-  const format = isVideo ? "bestvideo+bestaudio/best" : "bestaudio/best";
+  const format = isVideo ? "bestvideo+bestaudio[acodec!*=mp4a]/bestaudio/best" : "bestaudio[acodec!*=mp4a]/bestaudio/best";
 
   const ffArgs = [];
 
