@@ -103,13 +103,15 @@ export default class Floxy {
     this.fastify.floxy = this;
     logger.debug("Registering fastify plugins");
     this.registerFastifyPlugins();
+    logger.debug("Setting up Fastify logging");
     this.setupFastifyLogging();
     logger.debug("Registering fastify Routes");
     await this.registerRoutes();
     await this.database.initSchema();
     logger.debug("Creating base users");
     await this.createBaseUsers();
-    logger.debug("Setting up Fastify logging");
+    logger.debug("Setting up Media Cache Service");
+    await this.mediaCacheService.setup();
   }
 
   private registerFastifyPlugins() {

@@ -1,3 +1,5 @@
+// biome-ignore assist/source/organizeImports: <explanation>
+// import "./fuckshit.js";
 import Floxy from "./classes/Floxy.js";
 import config, { ConfigurationError } from "./config.js";
 import logger from "./utils/logger.js";

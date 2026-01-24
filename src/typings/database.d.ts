@@ -29,6 +29,7 @@ interface _DBMediaEntry extends Table {
   error: string | null;
   metadata: string; // JSON stringified
   reencode: string | null; // JSON stringified
+  dontCleanTitle: boolean;
   createdAt: number;
   updatedAt: number;
   liveAt?: number;

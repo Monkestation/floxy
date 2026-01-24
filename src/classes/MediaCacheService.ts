@@ -61,15 +61,38 @@ export default class MediaCacheService {
   ) {
     // no dont do this probably especially if its different encoding data??? i dunno
     const existing = await this.getByUrl(url);
+    if (existing && (
+      !existing.IsCompleted()
+    )) return existing;
 
-    let profile = Media.getProfile(options.reencode?.profile);
-    if (options.reencode && !profile) {
-      throw new Media.MediaProfileError(options.reencode.profile);
-    }
-    if (!profile) profile = Media.getProfile("AUDIO");
+    if (existing && (
+        (options.reencode && (
+          existing.reencode.profile === options.reencode.profile &&
+          existing.reencode.bitrate === options.reencode.bitrate
+        )
+      ) || !options.reencode)) {
+        logger.warn(`Not processing existing ${existing.id} since either no record, or reencode profile is same as existing.`);
+        return existing;
+      }
+    
 
-    if (options.reencode?.bitrate && !Media.validateProfileBitrate(options.reencode.profile || "AUDIO", options.reencode.bitrate)) {
-      throw new Media.MediaBitrateOutOfRangeError(options.reencode.profile || "AUDIO", options.reencode.bitrate);
+    // Detect direct audio URLs
+    // biome-ignore lint/style/noNonNullAssertion: <explanation>
+    const isDirectAudio = /\.(mp3|ogg|flac|wav|opus)$/i.exec(url)?.[1]!;
+
+    let profile: Media.EncodingProfile | undefined;
+
+    if (!isDirectAudio) {
+      // Only assign a profile if not a direct audio file
+      profile = Media.getProfile(options.reencode?.profile);
+      if (options.reencode && !profile) {
+        throw new Media.MediaProfileError(options.reencode.profile);
+      }
+      if (!profile) profile = Media.getProfile("AUDIO");
+
+      if (options.reencode?.bitrate && !Media.validateProfileBitrate(options.reencode.profile || "AUDIO", options.reencode.bitrate)) {
+        throw new Media.MediaBitrateOutOfRangeError(options.reencode.profile || "AUDIO", options.reencode.bitrate);
+      }
     }
 
     if (existing) {
@@ -84,6 +107,7 @@ export default class MediaCacheService {
         void existing.writeToDb();
       } else if (
         options.reencode &&
+        !isDirectAudio &&
         (existing.reencode.profile !== options.reencode.profile || existing.reencode.bitrate !== options.reencode.bitrate)
       ) {
         logger.info(`Reencode parameters for ${existing.id} differ. Adding forcerencode flag.`);
@@ -92,7 +116,7 @@ export default class MediaCacheService {
           profile: options.reencode.profile as keyof typeof Media.PROFILES,
           bitrate: options.reencode.bitrate,
         };
-        existing.extension = profile.format;
+        existing.extension = profile?.format || isDirectAudio;
         existing.forcerencode = true;
         existing.status = MediaQueueStatus.PENDING;
         existing.updatedAt = Date.now();
@@ -118,7 +142,7 @@ export default class MediaCacheService {
     const entry = new MediaCacheEntry(this.floxy, this, {
       id: crypto.randomUUID(),
       url,
-      extension: profile?.format,
+      extension: profile?.format || isDirectAudio,
       reencode: {
         profile: options.reencode?.profile as keyof typeof Media.PROFILES,
         bitrate: options.reencode?.bitrate,
@@ -127,11 +151,25 @@ export default class MediaCacheService {
       updatedAt: Date.now(),
       ttl: options.ttl || 3600,
       status: MediaQueueStatus.PENDING,
+      dontCleanTitle: options.dontCleanTitle ?? false,
     });
 
     this.cache.set(entry.id, entry);
     void entry.writeToDb();
     return entry;
+  }
+
+  public async setup() {
+    const medias = await this.floxy.database.getSpecificStatusMediaEntries(MediaQueueStatus.DOWNLOADING);
+    let count = 0;
+    for (const dbEntry of medias) {
+      const instancedEntry = MediaCacheEntry.fromDb(this.floxy, dbEntry);
+      instancedEntry.status = MediaQueueStatus.PENDING;
+      this.cache.set(dbEntry.id, instancedEntry);
+      count++
+    }
+    if (count)
+      logger.warn(`Found ${count} medias that were downloading, adding to queue as PENDING`);
   }
 
   public resetTimeout(interval: number) {
@@ -236,7 +274,7 @@ export default class MediaCacheService {
       const profile = Media.getProfile(entry.reencode.profile) || Media.getProfile("AUDIO");
 
       void (async () => {
-        const metadata = (await this.floxy.metadataParser.parseUrl(entry.url)) as MediaMetadata;
+        const metadata = (await this.floxy.metadataParser.parseUrl(entry.url, entry.dontCleanTitle)) as MediaMetadata;
         entry.metadata = metadata;
         logger.info(`Metadata for media cache entry ${entry.id} set.`);
       })();
@@ -260,6 +298,12 @@ export default class MediaCacheService {
       void (async () => {
         await fsp.writeFile(path.join(this.cacheFolder, entry.id, "log.txt"), result);
       })();
+
+      const destPath = result
+        .split("\n")
+        .find(e => e.includes("[ExtractAudio] Destination:"))
+        ?.match(/((\.{2}\/{1})+|((\.{1}\/{1})?)|(\/{1}))(([a-zA-Z0-9]+\/{1})+)([a-zA-Z0-9])+(\.{1}[a-zA-Z0-9]+)?$/)?.[1];
+      console.log(destPath);
       logger.info(`yt-dlp processing for media cache entry ${entry.id} completed.`);
 
       // entry.status = MediaQueueStatus.METADATA;
@@ -453,6 +497,7 @@ class MediaCacheEntry {
     bitrate?: number;
   };
   forcerencode: boolean = false;
+  dontCleanTitle?: boolean = false;
 
   constructor(
     floxy: Floxy,
@@ -468,6 +513,7 @@ class MediaCacheEntry {
       metadata,
       deleted = false,
       status = MediaQueueStatus.PENDING,
+      dontCleanTitle = false,
       error,
       reencode = {},
     }: {
@@ -482,6 +528,7 @@ class MediaCacheEntry {
       ttl: number;
       status?: MediaQueueStatus;
       error?: string | null;
+      dontCleanTitle: boolean;
       reencode?: {
         profile?: keyof typeof Media.PROFILES;
         bitrate?: number;
@@ -502,6 +549,7 @@ class MediaCacheEntry {
     this.error = error || null;
     this.status = status;
     this.reencode = reencode;
+    this.dontCleanTitle = dontCleanTitle;
   }
 
   static fromDb(floxy: Floxy, dbEntry: DBMediaEntry) {
@@ -518,6 +566,7 @@ class MediaCacheEntry {
       error: dbEntry.error,
       status: dbEntry.status as MediaQueueStatus,
       reencode: JSON.parse(dbEntry.reencode || "{}"),
+      dontCleanTitle: dbEntry.dontCleanTitle ?? false,
     });
   }
 
@@ -592,26 +641,25 @@ class MediaCacheEntry {
   }
 
   toFastifyJSON() {
-    
     return {
       ...this.toJSON(),
       endpoints: this.getEndpoints(),
-    }
+    };
   }
 
   getEndpoints(): string[] {
-    return config.EXTERNAL_CACHE_ENDPOINTS.map(e =>
-      {
-        const cachePath = path.posix.join(this.id, `output.${this.extension}`);
-        if (!e.endsWith("/")) {
-          e += "/";
-        }
-        return `${e}${cachePath}`;
-      },
-    );
+    return config.EXTERNAL_CACHE_ENDPOINTS.map(e => {
+      const cachePath = path.posix.join(this.id, `output.${this.extension}`);
+      if (!e.endsWith("/")) {
+        e += "/";
+      }
+      return `${e}${cachePath}`;
+    });
   }
   IsDoneProcessing() {
-    return this.status !== MediaQueueStatus.PENDING && this.status !== MediaQueueStatus.DOWNLOADING && this.status !== MediaQueueStatus.METADATA;
+    return (
+      this.status !== MediaQueueStatus.PENDING && this.status !== MediaQueueStatus.DOWNLOADING && this.status !== MediaQueueStatus.METADATA
+    );
   }
 
   IsCompleted() {
@@ -642,6 +690,7 @@ function buildYtDlpOptions(entry: MediaCacheEntry, profile: Media.EncodingProfil
     folderPath,
     profile,
   });
+
   const output = path.join(folderPath, `output.${profile.format}`);
 
   const isVideo = profile.type === "video";
@@ -683,9 +732,10 @@ function buildYtDlpOptions(entry: MediaCacheEntry, profile: Media.EncodingProfil
     format,
     output,
     embedMetadata: true,
-    // because postprocessorArgs is fucked
     postprocessorArgs: {
-      FFmpegAudio: ffArgs
-    }
+      FFmpegAudio: ffArgs,
+    },
+
+    // ...(profile.type === "audio" ? { extractAudio: true } : {}),
   } as ArgsOptions;
 }

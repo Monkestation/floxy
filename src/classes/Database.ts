@@ -3,6 +3,7 @@ import Knex from "knex";
 import { Schema as ParsedDatabaseSchema } from "../ParsedDatabaseSchema.js";
 import type { FloxyUserRole } from "../typings/users.js";
 import logger from "../utils/logger.js";
+import { MediaQueueStatus } from "./MediaCacheService.js";
 
 type Column = {
   name: string;
@@ -115,6 +116,12 @@ export class DatabaseManager {
       .select()
       .where("deleted", false)
       .andWhereRaw("(liveAt + (ttl * 1000)) <= (strftime('%s','now') * 1000)");
+  }
+
+  public async getSpecificStatusMediaEntries(status: MediaQueueStatus, deleted = false): Promise<DBMediaEntry[]> {
+    return this.client<DBMediaEntry>("media")
+      .select()
+      .andWhere("status", status)
   }
 
   // this shit below is kinda gay af and i need to find a better way to do it because why would you update by url.
