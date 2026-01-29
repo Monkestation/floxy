@@ -118,7 +118,7 @@ export class DatabaseManager {
       .andWhereRaw("(liveAt + (ttl * 1000)) <= (strftime('%s','now') * 1000)");
   }
 
-  public async getSpecificStatusMediaEntries(status: MediaQueueStatus, deleted = false): Promise<DBMediaEntry[]> {
+  public async getSpecificStatusMediaEntries(status: MediaQueueStatus): Promise<DBMediaEntry[]> {
     return this.client<DBMediaEntry>("media")
       .select()
       .andWhere("status", status)
