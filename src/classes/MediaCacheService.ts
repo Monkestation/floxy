@@ -9,6 +9,7 @@ import logger from "../utils/logger.js";
 import * as Media from "../utils/media.js";
 import type Floxy from "./Floxy.js";
 import type { MediaMetadata } from "./MetadataParser.js";
+import { sleep } from "../utils/other.js";
 
 /**
 What this does:
@@ -276,6 +277,11 @@ export default class MediaCacheService {
       void (async () => {
         const metadata = (await this.floxy.metadataParser.parseUrl(entry.url, entry.dontCleanTitle)) as MediaMetadata;
         entry.metadata = metadata;
+        while(entry.status !== MediaQueueStatus.COMPLETED && entry.status !== MediaQueueStatus.FAILED) {
+          logger.debug(`Waiting 5s for ${entry.id} to complete...`);
+          await sleep(5000);
+        }
+        await entry.writeToDb();
         logger.info(`Metadata for media cache entry ${entry.id} set.`);
       })();
 

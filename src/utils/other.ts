@@ -61,3 +61,7 @@ export function isValidEmail(email: string): boolean {
 //   return Math.floor(byondTimestampDS);
 // }
 
+
+export function sleep(ms: number) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
