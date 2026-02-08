@@ -346,8 +346,12 @@ export default class MediaCacheService {
       void this.calculateCounts();
     } catch (_error) {
       const errorReference = randomUUID();
-      logger.error("Media cache failed", {
-        error: _error,
+      logger.error(`Media cache failed for ${entry.id}`, {
+        error: {
+          message: (_error as any).message,
+          stack: (_error as any).stack,
+          name: (_error as any).name,
+        },
         reference: errorReference,
       });
       console.error(`Error reference: ${errorReference}`, _error);
