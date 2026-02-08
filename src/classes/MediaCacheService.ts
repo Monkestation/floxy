@@ -55,35 +55,35 @@ export default class MediaCacheService {
         profile: string;
         bitrate?: number;
       };
-      dontCleanTitle?: boolean,
+      dontCleanTitle?: boolean;
       // Notes to store about this particular cache, will be stored to the cache_log, not directly to the cache, so we have consistency
       extra?: Record<string, string>;
     },
   ) {
-    // no dont do this probably especially if its different encoding data??? i dunno
     const existing = await this.getByUrl(url);
-    if (existing && (
-      !existing.IsCompleted()
-    )) return existing;
+    const fileState = await existing?.getFileState();
 
-    if (existing && (
-        (options.reencode && (
-          existing.reencode.profile === options.reencode.profile &&
-          existing.reencode.bitrate === options.reencode.bitrate
-        )
-      ) || !options.reencode)) {
-        logger.warn(`Not processing existing ${existing.id} since either no record, or reencode profile is same as existing.`);
-        return existing;
-      }
-    
+    if (existing?.status === MediaQueueStatus.PENDING || existing?.status === MediaQueueStatus.DOWNLOADING) return existing;
+
+    if (
+      existing &&
+      ((options.reencode &&
+        existing.reencode.profile === options.reencode.profile &&
+        existing.reencode.bitrate === options.reencode.bitrate) ||
+        // biome-ignore lint/style/noNonNullAssertion: it exists because we got this far lol
+        !options.reencode) && (fileState! & MediaEntryFileState.AVAILABLE)
+    ) {
+      logger.warn(`Not processing existing ${existing.id} since either no record, or reencode profile is same as existing.`);
+      return existing;
+    }
 
     // Detect direct audio URLs
     // biome-ignore lint/style/noNonNullAssertion: <explanation>
-    const isDirectAudio = /\.(mp3|ogg|flac|wav|opus)$/i.exec(url)?.[1]!;
+    const directExt = /\.(mp3|ogg|flac|wav|opus)$/i.exec(url)?.[1]!;
 
     let profile: Media.EncodingProfile | undefined;
 
-    if (!isDirectAudio) {
+    if (!directExt) {
       // Only assign a profile if not a direct audio file
       profile = Media.getProfile(options.reencode?.profile);
       if (options.reencode && !profile) {
@@ -96,19 +96,12 @@ export default class MediaCacheService {
       }
     }
 
-    if (existing) {
-      const fileState = await existing.getFileState();
+    if (existing && fileState) {
+      let updated = false;
 
-      if (fileState & MediaEntryFileState.MISSING) {
-        logger.info(`Media files for ${existing.id} are missing. Resetting status to PENDING.`);
-        existing.status = MediaQueueStatus.PENDING;
-        existing.updatedAt = Date.now();
-        existing.error = null;
-        existing.progress = undefined;
-        void existing.writeToDb();
-      } else if (
+      if (
         options.reencode &&
-        !isDirectAudio &&
+        !directExt &&
         (existing.reencode.profile !== options.reencode.profile || existing.reencode.bitrate !== options.reencode.bitrate)
       ) {
         logger.info(`Reencode parameters for ${existing.id} differ. Adding forcerencode flag.`);
@@ -117,21 +110,49 @@ export default class MediaCacheService {
           profile: options.reencode.profile as keyof typeof Media.PROFILES,
           bitrate: options.reencode.bitrate,
         };
-        existing.extension = profile?.format || isDirectAudio;
+        existing.extension = profile?.format || directExt;
         existing.forcerencode = true;
         existing.status = MediaQueueStatus.PENDING;
         existing.updatedAt = Date.now();
-        void existing.writeToDb();
+        updated = true;
       } else if (existing.deleted) {
         logger.info(`Media cache entry ${existing.id} was marked as deleted. Restoring.`);
-        await fsp.rename(existing.deletedPath, existing.cachedPath).catch(err => {
-          logger.error(`Failed to rename media cache entry ${existing.id}: ${err}`);
-        });
+        if (fileState & MediaEntryFileState.DELETED) {
+          if (fileState & MediaEntryFileState.AVAILABLE) {
+            await fsp.rm(existing.cachedPath);
+          }
+
+          await fsp.rename(existing.deletedPath, existing.cachedPath).catch(err => {
+            logger.error(`Failed to rename media cache entry ${existing.id}: ${err}`);
+          });
+        } else if (fileState & MediaEntryFileState.AVAILABLE) {
+          // fuck?
+          // idk man how did you get here
+          existing.deleted = false;
+        } else {
+          // ok.
+          logger.info(`Media files for ${existing.id} are missing. Resetting status to PENDING.`);
+          existing.status = MediaQueueStatus.PENDING;
+          existing.updatedAt = Date.now();
+          existing.error = null;
+          existing.progress = undefined;
+          updated = true;
+        }
+
         existing.deleted = false;
         existing.updatedAt = Date.now();
         existing.liveAt = Date.now();
-        void existing.writeToDb();
+        updated = true;
+      } else if (fileState & MediaEntryFileState.MISSING) {
+        logger.info(`Media files for ${existing.id} are missing. Resetting status to PENDING.`);
+        existing.status = MediaQueueStatus.PENDING;
+        existing.updatedAt = Date.now();
+        existing.error = null;
+        existing.progress = undefined;
+        updated = true;
       }
+
+      if (updated) void existing.writeToDb();
 
       return existing;
     }
@@ -143,7 +164,7 @@ export default class MediaCacheService {
     const entry = new MediaCacheEntry(this.floxy, this, {
       id: crypto.randomUUID(),
       url,
-      extension: profile?.format || isDirectAudio,
+      extension: profile?.format || directExt,
       reencode: {
         profile: options.reencode?.profile as keyof typeof Media.PROFILES,
         bitrate: options.reencode?.bitrate,
@@ -167,10 +188,9 @@ export default class MediaCacheService {
       const instancedEntry = MediaCacheEntry.fromDb(this.floxy, dbEntry);
       instancedEntry.status = MediaQueueStatus.PENDING;
       this.cache.set(dbEntry.id, instancedEntry);
-      count++
+      count++;
     }
-    if (count)
-      logger.warn(`Found ${count} medias that were downloading, adding to queue as PENDING`);
+    if (count) logger.warn(`Found ${count} medias that were downloading, adding to queue as PENDING`);
   }
 
   public resetTimeout(interval: number) {
@@ -277,7 +297,7 @@ export default class MediaCacheService {
       void (async () => {
         const metadata = (await this.floxy.metadataParser.parseUrl(entry.url, entry.dontCleanTitle)) as MediaMetadata;
         entry.metadata = metadata;
-        while(entry.status !== MediaQueueStatus.COMPLETED && entry.status !== MediaQueueStatus.FAILED) {
+        while (entry.status !== MediaQueueStatus.COMPLETED && entry.status !== MediaQueueStatus.FAILED) {
           logger.debug(`Waiting 5s for ${entry.id} to complete...`);
           await sleep(5000);
         }
@@ -315,7 +335,6 @@ export default class MediaCacheService {
       // entry.status = MediaQueueStatus.METADATA;
 
       // set metadata
-      
 
       // on success
       entry.status = MediaQueueStatus.COMPLETED;
@@ -731,7 +750,7 @@ function buildYtDlpOptions(entry: MediaCacheEntry, profile: Media.EncodingProfil
       );
     }
   }
-  
+
   logger.debug(`FFmpeg arguments for media cache entry ${entry.id}:`, { ffArgs });
 
   return {
