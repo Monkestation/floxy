@@ -4,18 +4,19 @@
 ## Media caching/requesting
 `POST /api/media/queue` - Add media to be fetched, to the queue. If media is already cached in some form, will return 409 Conflict
   - query params:
-    - url: required, string, link to media to attempt to download.
+    - url: required, string, HTTP or HTTPS link to media. Invalid URLs return 400. YouTube video links with playlist context queue only the video; playlist URLs are rejected.
     - ttl: optional, number (seconds), time this media should be available on the cache for, defaults to config/env setting
     - profile: optional, string, must be one of the supported profiles, provided at /api
 		- bitrate: optional, number, profile is required if this is specified. 
-		- dontcleantitle: optional, boolean, whether or not to clean metadata tiles of garbage (typically youll want this if you're downloading music)
+		- dontCleanTitle: optional boolean, defaults to false. Set true to skip title cleaning.
     - extra: optional, JSON string, notes to store about this particular cache. example: ckey info, player info,
-`POST /api/ytdlp |/api/ytdlp/:id` - Given a url, will fetch and return the raw JSON from yt-dlp's -J param
+`GET /api/ytdlp` or `GET /api/ytdlp/:id` - Fetch normalized metadata for a URL or cached entry.
   At least of the following is required.
   - Url Params:
     - id: string, media entry ID 
   - query params:
-    - url: string, link to media
+    - url: string, HTTP or HTTPS link to media
+    - dontCleanTitle: optional boolean, defaults to false. `false` enables title cleaning; `true` skips it. Other values return 400.
 Example output for single:
 ```json
 {
@@ -81,11 +82,12 @@ Example output for album/playlist
   - query params:
     - hard: optional, boolean, if true, will delete the file immediately instead of marking it as deleted and retaining for 30 days.
 
-`GET /api/media/` - list all media caches, with query params to filter by valid, expired, etc. (has pagination)
+`GET /api/media` - List media caches, including deleted entries. `entries` contains the requested page; `total` counts all database entries.
   - query params:
-    - valid: optional, boolean, filter by valid or expired caches
     - page: optional, number, page number for pagination
     - limit: optional, number, number of items per page
+
+Audio profiles convert to their requested codec and bitrate (bits per second); FLAC is lossless. The default is MP3. The `ogg-opus` profile writes `.opus` files. Completed entries store the actual output extension, which is also used in cache endpoints.
 
 ## User authentication.
 

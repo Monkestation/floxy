@@ -280,7 +280,11 @@ export default class MediaCacheService {
 
         if (fileState & MediaEntryFileState.AVAILABLE && !entry.forcerencode) {
           logger.info(`Media cache entry ${entry.id} already exists on disk, skipping download.`);
+					if (!(await fsp.stat(entry.cachedPath)).isFile()) {
+						throw new Error("Cached output is not a regular file");
+					}
           entry.status = MediaQueueStatus.COMPLETED;
+					await entry.writeToDb();
           return;
         }
 
@@ -310,6 +314,7 @@ export default class MediaCacheService {
       logger.debug(`Built yt-dlp options for ${entry.id} - ${inspect(opts)}`);
       const result = await this.floxy.ytdlp.downloadAsync(entry.url, {
         debugPrintCommandLine: true,
+				noPlaylist: true,
         noAbortOnError: true,
         abortOnError: false,
         progress: true,
@@ -325,11 +330,17 @@ export default class MediaCacheService {
         await fsp.writeFile(path.join(this.cacheFolder, entry.id, "log.txt"), result);
       })();
 
-      const destPath = result
-        .split("\n")
-        .find(e => e.includes("[ExtractAudio] Destination:"))
-        ?.match(/((\.{2}\/{1})+|((\.{1}\/{1})?)|(\/{1}))(([a-zA-Z0-9]+\/{1})+)([a-zA-Z0-9])+(\.{1}[a-zA-Z0-9]+)?$/)?.[1];
-      console.log(destPath);
+			const outputLine = result.split(/[\r\n]+/).find(line => line.startsWith("FLOXY_OUTPUT:"));
+			if (!outputLine) throw new Error("yt-dlp returned no final output path");
+			const outputPath = path.resolve(JSON.parse(outputLine.slice("FLOXY_OUTPUT:".length)) as string);
+			if (path.dirname(outputPath) !== path.resolve(folderPath) || !(await fsp.stat(outputPath)).isFile()) {
+				throw new Error("yt-dlp output is not a file in the cache entry directory");
+			}
+			const extension = path.extname(outputPath).slice(1);
+			if (path.basename(outputPath) !== `output.${extension}` || !extension) {
+				throw new Error("yt-dlp returned an unexpected output filename");
+			}
+			entry.extension = extension;
       logger.info(`yt-dlp processing for media cache entry ${entry.id} completed.`);
 
       // entry.status = MediaQueueStatus.METADATA;
@@ -341,7 +352,7 @@ export default class MediaCacheService {
       entry.progress = undefined;
       entry.updatedAt = Date.now();
       entry.liveAt = Date.now();
-      void entry.writeToDb();
+			await entry.writeToDb();
       logger.info(`Media cache entry ${entry.id} completed successfully.`);
       void this.calculateCounts();
     } catch (_error) {
@@ -720,51 +731,33 @@ function buildYtDlpOptions(entry: MediaCacheEntry, profile: Media.EncodingProfil
     profile,
   });
 
-  const output = path.join(folderPath, `output.${profile.format}`);
+	const output = path.join(folderPath, "output.%(ext)s");
+	const format = profile.type === "video" ? "bestvideo+bestaudio[acodec!*=mp4a]/bestaudio/best" : "bestaudio[acodec!*=mp4a]/bestaudio/best";
+	const opts: ArgsOptions = {
+		format,
+		output,
+		embedMetadata: true,
+		print: "after_move:FLOXY_OUTPUT:%(filepath)j",
+	};
 
-  const isVideo = profile.type === "video";
-
-  const format = isVideo ? "bestvideo+bestaudio[acodec!*=mp4a]/bestaudio/best" : "bestaudio[acodec!*=mp4a]/bestaudio/best";
-
-  const ffArgs = [];
-
-  if (profile.type === "video") {
-    ffArgs.push(
-      "-c:v",
-      Media.VIDEO_CODEC_MAP[profile.codec as keyof typeof Media.VIDEO_CODEC_MAP],
-      "-crf",
-      Media.VIDEO_CRF_DEFAULT[profile.codec as keyof typeof Media.VIDEO_CRF_DEFAULT] || "22",
-      "-c:a",
-      "aac",
-    );
-  } else if (profile.type === "audio") {
-    ffArgs.push("-vn");
-
-    if (profile.codec === "flac") {
-      // lossless: no bitrate
-      ffArgs.push("-c:a", "flac");
-    } else {
-      // biome-ignore lint/style/noNonNullAssertion: lossy profiles always have audio_bitrate
-      const bitrate = entry.reencode.bitrate || profile.audio_bitrate!.default;
-      ffArgs.push(
-        "-c:a",
-        Media.AUDIO_CODEC_MAP[profile.codec as keyof typeof Media.AUDIO_CODEC_MAP],
-        "-b:a",
-        `${Math.floor(bitrate / 1000)}k`,
-      );
-    }
-  }
-
-  logger.debug(`FFmpeg arguments for media cache entry ${entry.id}:`, { ffArgs });
-
-  return {
-    format,
-    output,
-    embedMetadata: true,
-    postprocessorArgs: {
-      FFmpegAudio: ffArgs,
-    },
-
-    // ...(profile.type === "audio" ? { extractAudio: true } : {}),
-  } as ArgsOptions;
+	if (profile.type === "audio") {
+		opts.extractAudio = true;
+		opts.audioFormat = profile.codec === "aac" ? "m4a" : profile.codec;
+		if (profile.audio_bitrate) {
+			const bitrate = entry.reencode.bitrate ?? profile.audio_bitrate.default;
+			opts.audioQuality = `${Math.floor(bitrate / 1000)}K`;
+		}
+	} else {
+		opts.postprocessorArgs = {
+			FFmpegAudio: [
+				"-c:v",
+				Media.VIDEO_CODEC_MAP[profile.codec as keyof typeof Media.VIDEO_CODEC_MAP],
+				"-crf",
+				String(Media.VIDEO_CRF_DEFAULT[profile.codec as keyof typeof Media.VIDEO_CRF_DEFAULT] || "22"),
+				"-c:a",
+				"aac",
+			],
+		};
+	}
+	return opts;
 }
