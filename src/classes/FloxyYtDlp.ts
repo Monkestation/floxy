@@ -1,5 +1,5 @@
 /** biome-ignore-all lint/correctness/noUnreachableSuper: explanation below */
-import { type YtDlpOptions, YtDlp as YtDlpOriginal } from "ytdlp-nodejs";
+import { type ArgsOptions, type YtDlpOptions, YtDlp as YtDlpOriginal } from "ytdlp-nodejs";
 
 // YtDlpNodeJs tries to set executable permissions on ytdlp,
 // and tries to download ffmpeg if it doesn't exist, which we don't want.
@@ -13,6 +13,17 @@ export class YtDlp extends YtDlpOriginal {
     obj.binaryPath = opt?.binaryPath || "";
     // @ts-expect-error see above
     obj.ffmpegPath = opt?.ffmpegPath;
+
+		// the wrapper appends its own options last, so the URL separator has to go here
+		const command = obj as unknown as {
+			buildArgs(url: string, options: ArgsOptions, progress?: boolean, formatOptions?: string[]): string[];
+		};
+		const buildArgs = command.buildArgs.bind(obj);
+		command.buildArgs = (...args) => {
+			const result = buildArgs(...args);
+			result.splice(result.length - 1, 0, "--");
+			return result;
+		};
 
     return obj;
   }

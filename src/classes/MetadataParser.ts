@@ -12,6 +12,7 @@ export class YtdlpMetadataParser {
     const raw = this.parseYtdlpJson(
       await this.floxy.ytdlp.execAsync(url, {
         dumpJson: true,
+				noPlaylist: true,
         noDownload: true,
         cookies: this.floxy.config.ytdlpCookiesPath,
         additionalOptions: this.floxy.config.ytdlpExtraArgs ? this.floxy.config.ytdlpExtraArgs.split(" ") : [],
