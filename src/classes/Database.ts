@@ -111,6 +111,11 @@ export class DatabaseManager {
     return entries;
   }
 
+	public async countMediaEntries(): Promise<number> {
+		const result = await this.client("media").count({ total: "*" }).first();
+		return Number(result?.total ?? 0);
+	}
+
   public async getExpiredMediaEntries(): Promise<DBMediaEntry[]> {
     return this.client<DBMediaEntry>("media")
       .select()

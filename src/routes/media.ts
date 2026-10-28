@@ -4,7 +4,7 @@ import fastifyPlugin from "fastify-plugin";
 import type { JSONSchema } from "json-schema-to-ts";
 import type Floxy from "../classes/Floxy.js";
 import { authMiddleware } from "../middleware/auth.js";
-import { MediaLink } from "../utils/links.js";
+import { isHttpUrl, MediaLink } from "../utils/links.js";
 import logger from "../utils/logger.js";
 
 export default (floxy: Floxy) =>
@@ -45,7 +45,7 @@ export default (floxy: Floxy) =>
         const entries = await floxy.mediaCacheService.getAll(page, limit);
         return {
           entries: entries.map(e => e.toJSON()),
-          total: entries.length,
+          total: await floxy.database.countMediaEntries(),
           page,
           limit,
         };
@@ -93,6 +93,9 @@ export default (floxy: Floxy) =>
         },
       },
       async (req, res) => {
+				if (!isHttpUrl(req.query.url)) {
+					return res.status(400).send({ message: "URL must use HTTP or HTTPS." });
+				}
         let extra: Record<string, string> | undefined;
         if (req.query.extra) {
           try {

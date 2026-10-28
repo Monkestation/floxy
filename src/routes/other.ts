@@ -3,6 +3,7 @@ import packageData from "../../package.json" with { type: "json" };
 import type Floxy from "../classes/Floxy.js";
 import { YtDlp } from "../classes/FloxyYtDlp.js";
 import config from "../config.js";
+import { isHttpUrl } from "../utils/links.js";
 import { authMiddleware } from "../middleware/auth.js";
 import * as Media from "../utils/media.js";
 
@@ -24,7 +25,18 @@ export default (floxy: Floxy) =>
       fastify.get<{
         Querystring?: { url?: string; dontCleanTitle?: boolean };
         Params: { id?: string };
-      }>(route, { preHandler: [authMiddleware] }, async (req, res) => {
+      }>(route, {
+				preHandler: [authMiddleware],
+				schema: {
+					querystring: {
+						type: "object",
+						properties: {
+							url: { type: "string" },
+							dontCleanTitle: { type: "boolean", default: false },
+						},
+					},
+				},
+			}, async (req, res) => {
         let url = req.query?.url;
 
         if (req.params.id) {
@@ -40,6 +52,10 @@ export default (floxy: Floxy) =>
             message: "No URL provided, or media entry returned no URL",
           });
         }
+
+				if (!isHttpUrl(url)) {
+					return res.status(400).send({ message: "URL must use HTTP or HTTPS." });
+				}
 
         try {
           const metadata = await floxy.metadataParser.parseUrl(url, req.query?.dontCleanTitle ?? false);

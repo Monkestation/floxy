@@ -20,6 +20,15 @@ export type IsMultipleMediaType<T extends MediaType> = T extends MediaType.Album
   ? true
   : false;
 
+export function isHttpUrl(value: string): boolean {
+	try {
+		const url = new URL(value);
+		return url.protocol === "http:" || url.protocol === "https:";
+	} catch {
+		return false;
+	}
+}
+
 export class MediaLink {
   url: string;
   service: MediaService;
@@ -41,7 +50,9 @@ export class MediaLink {
       let type: MediaType | null = null;
 
       if (hostname.includes("youtube.com") || hostname.includes("youtu.be")) {
-        if (searchParams.has("list") || pathname.includes("/playlist")) {
+        const hasVideo = (pathname === "/watch" && !!searchParams.get("v"))
+					|| (hostname.replace(/^www\./, "") === "youtu.be" && pathname.split("/").filter(Boolean).length === 1);
+        if (!hasVideo && (searchParams.has("list") || pathname.includes("/playlist"))) {
           return { service: MediaService.YouTube, type: MediaType.Playlist };
         } else if (hostname.includes("music.youtube.com")) {
           return { service: MediaService.YouTubeMusic, type: MediaType.Track };
@@ -95,7 +106,13 @@ export class MediaLink {
       // normalize hostname
       let host = u.hostname.toLowerCase();
       if (host.startsWith("www.")) host = host.slice(4);
-      if (host === "youtu.be") host = "youtube.com";
+      if (host === "youtu.be") {
+				const videoId = u.pathname.slice(1);
+				host = "youtube.com";
+				u.pathname = "/watch";
+				u.search = "";
+				u.searchParams.set("v", videoId);
+			}
       u.hostname = host;
 
       u.protocol = "https:";

@@ -16,7 +16,7 @@ const config = {
   /// Separated by commas
   EXTERNAL_CACHE_ENDPOINTS: process.env.EXTERNAL_CACHE_ENDPOINTS?.split(",").filter(notEmpty).map(e=>e.trim()) ?? [],
   YTDLP_COOKIES_PATH: process.env.YTDLP_COOKIES_PATH
-    ? await findFile("cookies.txt", [""])
+    ? path.resolve(process.env.YTDLP_COOKIES_PATH)
     : await findFile("cookies.txt", [process.cwd(), path.join(import.meta.dirname, "..")]),
   LOGGER_PRETTY: BooleanLike(process.env.LOGGER_PRETTY),
   DEBUG: BooleanLike(process.env.DEBUG),
